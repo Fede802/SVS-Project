@@ -2,16 +2,21 @@
 
 ## Setup
 
+Conda environment:
+```bash
 conda activate carla-env
-
+```
 ### Nella dir di carla
+```bash
 pip install -r PythonAPI/examples/requirements.txt
 pip install carla
-
+```
 ### Nella dir del progetto 
+```bash
 pip install -r requirements.txt
-
+```
 ### In vscode
+
 Cercare "conda" e mettere nel path "C:\anaconda3\Scripts\conda.exe"
 
 ## Invariants
