@@ -22,7 +22,7 @@ def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
 
     for detection, i in zip(data, range(len(data))):
         absolute_speed = abs(detection.velocity)
-        debug_utility.draw_radar_point(radar, detection)
+        #debug_utility.draw_radar_point(radar, detection)
         # Calculate TTC
         if absolute_speed != 0:
             ttc = detection.depth / absolute_speed
@@ -40,7 +40,7 @@ ego_vehicle = carla_utility.spawn_vehicle(world=world, vehicle_index=15)
 other_vehicle = carla_utility.spawn_vehicle(world=world, transform=carla.Transform(carla.Location(x=50)))
 
 radar = carla_utility.spawn_radar(world, ego_vehicle)
-radar.listen(lambda data: radar_callback(data, radar))
+radar.listen(lambda data: handle_measurement(data, radar))
 
 #vehicle.set_autopilot(True)
 running = True
@@ -51,7 +51,7 @@ try:
     while running:
         current_location = ego_vehicle.get_location()
         carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
-        debug_utility.draw_radar_bounding_box(radar)
+        #debug_utility.draw_radar_bounding_box(radar)
         #time.sleep(0.001)
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
@@ -81,9 +81,11 @@ try:
             control = carla.VehicleControl()
             brake = 1.0 - ((min_ttc - ttc_danger) / ttc_danger)
             control.brake = brake
+        elif ego_vehicle.get_velocity().length() == 0:
+            ego_vehicle.apply_control(carla.VehicleControl(throttle=1.0))
         else:
             control = carla.VehicleControl()
-            control.throttle = min(1.0, target_velocity / ego_vehicle.get_velocity.length)  # Maintain constant speed
+            control.throttle = min(1.0, target_velocity / ego_vehicle.get_velocity().length())  # Maintain constant speed
             ego_vehicle.apply_control(control)
         world.tick()
         pygame.display.flip()
