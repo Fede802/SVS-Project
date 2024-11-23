@@ -4,6 +4,7 @@ from matplotlib import cm
 import numpy as np
 import debug_utility
 import carla_utility
+import plot_utility
 
 client = carla.Client('localhost', 2000)
 print(client.get_available_maps())
@@ -16,7 +17,7 @@ spawn_points = world.get_map().get_spawn_points()
 spectator = world.get_spectator()
 
 
-
+vPlot = plot_utility.Plot()
 
 
 min_ttc = float('inf')
@@ -136,6 +137,7 @@ try:
         #print("Actor forward vector (direction):", ego_vehicle.get_transform().get_forward_vector())
     
         print("Actor control: ",ego_vehicle.get_control().throttle," ", ego_vehicle.get_control().brake," Actor velocity: ", ego_vehicle.get_velocity(),", ",ego_vehicle.get_velocity().length(),"m/s, ",ego_vehicle.get_velocity().length()*3.6,"km/h")
+        vPlot.add_value(ego_vehicle.get_velocity().length()*3.6)
         world.tick()
         #time.sleep(0.1)
 except KeyboardInterrupt:
