@@ -50,8 +50,8 @@ def spawn_camera(attach_to=None, transform=carla.Transform(carla.Location(x=1.2,
 
 def spawn_radar(attach, transform=carla.Transform(carla.Location(x=1.2, z=1.2)), range=20, points_per_second=10):
     radar_bp = world.get_blueprint_library().find('sensor.other.radar')
-    radar_bp.set_attribute('horizontal_fov', '30')
-    radar_bp.set_attribute('vertical_fov', '30')
+    radar_bp.set_attribute('horizontal_fov', '10')
+    radar_bp.set_attribute('vertical_fov', '10')
     #radar_bp.set_attribute('range', str(100.0))
     #print("sdhgakjfhjd")
     #print(type(radar_bp.get_attribute('range')))
@@ -69,13 +69,12 @@ def type_detection(data) -> carla.RadarDetection:
     
 
 # Simple callback function to print the number of detections
-def handle_measurement(data: carla.RadarMeasurement, vehicle: carla.Vehicle):
+def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
     print(len(data))
     print(data.get_detection_count())
     for m in data:
-        newM = type_detection(m)
-        print("data: ",newM)
-        print("DIO LAIDO ", newM.depth)
+        
+        debug_utility.draw_radar_point(radar, m)
 
 
 
@@ -86,7 +85,8 @@ for v in world.get_actors().filter('vehicle.*'):
     v.destroy()
 
 ego_vehicle = spawn_vehicle(vehicle_index=15, transform=carla.Transform(rotation = carla.Rotation(yaw=45)))
-#trasnform ego_vehicle = spawn_vehicle(vehicle_index=15)
+#trasnform 
+#ego_vehicle = spawn_vehicle(vehicle_index=15)
 time.sleep(1)
 radar = spawn_radar(attach=ego_vehicle)
 time.sleep(1)
@@ -106,9 +106,9 @@ print(int(radar_range)*radar_f_vector.x)
 #print(fwv.length())
 #print(radar.bounding_box)
 #print(ego_vehicle.get_transform())
-#radar.listen(lambda data: handle_measurement(data, ego_vehicle))
+radar.listen(lambda data: handle_measurement(data, radar))
 other_vehicle = spawn_vehicle(transform=carla.Transform(carla.Location(x=50)))
-debug_utility.draw_radar_bounding_box(radar)
+#debug_utility.draw_radar_bounding_box(radar)
 #camera = spawn_camera(attach_to=ego_vehicle, transform=carla.Transform(carla.Location(x=-6, z=5), carla.Rotation(pitch=-30)))
 
 #point_list = o3d.geometry.PointCloud()

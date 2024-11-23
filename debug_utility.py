@@ -36,23 +36,29 @@ def from_np(v3d: np.ndarray):
     v3d = v3d.reshape(-1)
     return carla.Vector3D(v3d[0], v3d[1],v3d[2])
 
+def __get_point_at(radar: carla.Actor, at: int):
+    radar_location = radar.get_location()
+    radar_f_vector = radar.get_transform().get_forward_vector()
+    return __vector_scalar_op(radar_location, radar_f_vector, lambda a, b: a + at * b)
+
+def draw_radar_point(radar: carla.Actor, point: carla.RadarDetection):
+    debug = radar.get_world().debug
+    radar_location = radar.get_location()
+    shifted_max_range_point = to_np(__sub(__get_point_at(radar, point.depth), radar_location))
+    debug.draw_line(radar_location, __add(from_np(__rotate(shifted_max_range_point, point.azimuth, point.altitude)),radar_location), life_time=0.1)
+    radar.get_world().tick()
+
 def draw_radar_bounding_box(radar: carla.Actor):
     debug = radar.get_world().debug
     radar_h_fov = math.radians(int(radar.attributes.get('horizontal_fov')))
-    radar_v_fov = math.radians(int(radar.attributes.get('vertical_fov')))
     radar_range = int(radar.attributes.get('range'))
+    radar_v_fov = math.radians(int(radar.attributes.get('vertical_fov')))
     radar_location = radar.get_location()
-    radar_transform = radar.get_transform()
-    radar_f_vector = radar_transform.get_forward_vector()
-    new_x = radar_location.x + radar_range * radar_f_vector.x
-    new_y = radar_location.y + radar_range * radar_f_vector.y
-    new_z = radar_location.z + radar_range * radar_f_vector.z
-   
-    new_point = to_np(__sub(carla.Vector3D(new_x,new_y,new_z), radar_location))
 
-    debug.draw_line(radar_location, __add(from_np(new_point), radar_location), life_time=0.1)
-    debug.draw_line(radar_location, __add(from_np(__rotate(new_point, radar_h_fov, radar_v_fov)),radar_location), life_time=0.1)
-    debug.draw_line(radar_location, __add(from_np(__rotate(new_point, radar_h_fov, -radar_v_fov)),radar_location), life_time=0.1)
-    debug.draw_line(radar_location, __add(from_np(__rotate(new_point, -radar_h_fov, radar_v_fov)),radar_location), life_time=0.1)
-    debug.draw_line(radar_location, __add(from_np(__rotate(new_point, -radar_h_fov, -radar_v_fov)),radar_location), life_time=0.1)
+    shifted_max_range_point = to_np(__sub(__get_point_at(radar, radar_range), radar_location))
+    debug.draw_line(radar_location, __add(from_np(shifted_max_range_point), radar_location), life_time=0.1)
+    debug.draw_line(radar_location, __add(from_np(__rotate(shifted_max_range_point, radar_h_fov, radar_v_fov)),radar_location), life_time=0.1)
+    debug.draw_line(radar_location, __add(from_np(__rotate(shifted_max_range_point, radar_h_fov, -radar_v_fov)),radar_location), life_time=0.1)
+    debug.draw_line(radar_location, __add(from_np(__rotate(shifted_max_range_point, -radar_h_fov, radar_v_fov)),radar_location), life_time=0.1)
+    debug.draw_line(radar_location, __add(from_np(__rotate(shifted_max_range_point, -radar_h_fov, -radar_v_fov)),radar_location), life_time=0.1)
     radar.get_world().tick()
