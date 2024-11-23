@@ -126,8 +126,8 @@ try:
                     #world.tick()
                     moving_forward = False
         throttle, brake = compute_controls(ego_vehicle.get_velocity().length(), target_velocity, min_ttc)
-        #control = carla.VehicleControl(throttle=throttle, brake=brake)
-        control = carla.VehicleControl(throttle=0.5)
+        control = carla.VehicleControl(throttle=throttle, brake=brake)
+        #control = carla.VehicleControl(throttle=0.5)
         ego_vehicle.apply_control(control)
         #spectator.set_transform(ego_vehicle.get_transform())
         carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
