@@ -14,8 +14,9 @@ spectator = world.get_spectator()
 #TTC = (distance / relative_velocity) if relative_velocity != 0 else 9999
 # Simple callback function to print the number of detections
 def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
-    for m in data:
-        debug_utility.draw_radar_point(radar, m)
+    print()
+    #for m in data:
+     #   debug_utility.draw_radar_point(radar, m)
 
 pygame.init()
 pygame.display.set_mode((400, 300))
@@ -24,10 +25,10 @@ for v in world.get_actors().filter('vehicle.*'):
     v.destroy()
 
 #ego_vehicle = carla_utility.spawn_vehicle(world=world, vehicle_index=15, transform=carla.Transform(rotation = carla.Rotation(yaw=45)))
-ego_vehicle = carla_utility.spawn_vehicle(world=world, vehicle_index=15)
+ego_vehicle = carla_utility.spawn_vehicle(world=world, vehicle_index=18)
 other_vehicle = carla_utility.spawn_vehicle(world=world, transform=carla.Transform(carla.Location(x=50)))
 
-radar = carla_utility.spawn_radar(world, ego_vehicle)
+radar = carla_utility.spawn_radar(world, ego_vehicle, range=100)
 radar.listen(lambda data: handle_measurement(data, radar))
 
 #vehicle.set_autopilot(True)
@@ -39,7 +40,7 @@ try:
     while running:
         current_location = ego_vehicle.get_location()
         carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
-        debug_utility.draw_radar_bounding_box(radar)
+        #debug_utility.draw_radar_bounding_box(radar)
         #time.sleep(0.001)
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
