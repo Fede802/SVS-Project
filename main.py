@@ -47,6 +47,44 @@ running = True
 moving_forward = False
 #carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
 
+def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
+    """
+    Calcola throttle e brake in base alla velocità corrente, velocità target e TTC.
+    
+    Args:
+        velocita_corrente (float): Velocità attuale del veicolo in m/s.
+        velocita_target (float): Velocità desiderata in m/s.
+        ttc (float): Time to collision in secondi.
+        k_p (float): Fattore di proporzionalità per il controllo.
+        
+    Returns:
+        throttle (float): Valore tra 0.0 e 1.0.
+        brake (float): Valore tra 0.0 e 1.0.
+    """
+    errore_vel = velocita_target - velocita_corrente
+    
+    # Inizializza throttle e brake
+    throttle = 0.0
+    brake = 0.0
+    
+    if errore_vel > 0:
+        # Accelerazione
+        throttle = min(0.5 + k_p * errore_vel, 1.0)
+    elif errore_vel < 0:
+        # Decelerazione
+        brake = min(-k_p * errore_vel, 1.0)
+
+    if brake > 0:
+        throttle = 0.0
+    
+    # TTC Safety Override
+    if ttc < 1.5:
+        brake = 1.0
+        throttle = 0.0
+    
+    return throttle, brake
+
+
 try:
     while running:
         current_location = ego_vehicle.get_location()
@@ -68,25 +106,9 @@ try:
                     ego_vehicle.apply_control(carla.VehicleControl(brake=0.1))
                     #world.tick()
                     moving_forward = False
-
-        ttc_danger = 1.5
-        ttc_chill = 3.0
-        # Braking control
-        if min_ttc < ttc_danger:
-            control = carla.VehicleControl()
-            control.brake = 1.0  # Maximum braking
-            ego_vehicle.apply_control(control)
-            print("Emergency braking activated!")
-        elif min_ttc < ttc_chill and min_ttc > ttc_danger:
-            control = carla.VehicleControl()
-            brake = 1.0 - ((min_ttc - ttc_danger) / ttc_danger)
-            control.brake = brake
-        elif ego_vehicle.get_velocity().length() == 0:
-            ego_vehicle.apply_control(carla.VehicleControl(throttle=1.0))
-        else:
-            control = carla.VehicleControl()
-            control.throttle = min(1.0, target_velocity / ego_vehicle.get_velocity().length())  # Maintain constant speed
-            ego_vehicle.apply_control(control)
+        throttle, brake = compute_controls(ego_vehicle.get_velocity().length(), target_velocity, min_ttc)
+        control = carla.VehicleControl(throttle=throttle, brake=brake)
+        ego_vehicle.apply_control(control)
         world.tick()
         pygame.display.flip()
         #print("Actor transform: ", ego_vehicle.get_transform())
