@@ -1,93 +1,83 @@
-from matplotlib.animation import FuncAnimation
-from bokeh.plotting import figure, output_file, show
+import tkinter as tk
 import matplotlib.pyplot as plt
-import numpy as np
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import random
-import time
-import pygal
-import random
-import time
 import threading
+import time
 
-class Plot:
-
+class RealTimePlotApp:
     def __init__(self):
-        self.x = [0] 
-        self.y = [10]
-        self.chart = self.create_chart(self.x, self.y)
-        
-        
+        # Initialize data lists
+        self.x_data = []
+        self.y_data = []
 
-    def create_chart(self, x_data, y_data):
-        chart = pygal.Line()
-        chart.title = 'Real-Time Data Plot'
-        chart.x_labels = map(str, x_data)  # Convert x_data to string for labeling
-        chart.add('Value', y_data)
-        chart.render_in_browser()
+        # Create a figure and axes for the plot
+        self.figure, self.ax = plt.subplots()
+        self.ax.set_title("Real-Time Data Plot")
+        self.ax.set_xlabel("Time")
+        self.ax.set_ylabel("Value")
 
-        # Save the chart as an SVG file
-        chart.render_to_file('live_data_chart.svg')
+        # Start the Tkinter GUI in a separate thread
+        self.gui_thread = threading.Thread(target=self.run_gui)
+        self.gui_thread.daemon = True
+        self.gui_thread.start()
 
-        return chart
-        
-        
-    
-    
+        # Start the data generation in the main thread
+        self.running = True
+        #self.start_data_generation()
+
+    def update_plot(self):
+        """Update the plot with new data."""
+        if len(self.x_data) > 0 and len(self.y_data) > 0:
+            # Clear the plot, redraw the data, and set labels
+            self.ax.clear()
+            self.ax.plot(self.x_data, self.y_data, marker='o', linestyle='-', color='b')
+            self.ax.set_title("Real-Time Data Plot")
+            self.ax.set_xlabel("Time")
+            self.ax.set_ylabel("Value")
+
+            # Redraw the canvas with the updated plot
+            self.canvas.draw()
 
     def add_value(self, y):
-        self.x.append(len(self.x))
-        self.y.append(y)
-        self.create_chart(self.x, self.y)
+        self.x_data.append(len(self.x_data))
+        self.y_data.append(y)
+        self.root.after(0, self.update_plot)
         print( 'UPDATE')
-        
-        
 
+    def start_data_generation(self):
+        """Start generating new data points every second."""
+        def generate_data():
+            while self.running:
+                new_x = len(self.x_data) + 1
+                new_y = random.uniform(0, 10)
 
+                self.x_data.append(new_x)
+                self.y_data.append(new_y)
 
+                # Schedule the GUI update
+                self.root.after(0, self.update_plot)
 
-# Initialize data
-x_data = []
-y_data = []
+                time.sleep(1)  # Simulate new data every second
 
-# Create a Pygal line chart
-def create_chart(x_data, y_data):
-    chart = pygal.Line()
-    chart.title = 'Real-Time Data Plot'
-    chart.x_labels = map(str, x_data)  # Convert x_data to string for labeling
-    chart.add('Value', y_data)
-    chart.render_in_browser()
+        # Start the data generation in the main thread
+        threading.Thread(target=generate_data, daemon=True).start()
 
-    # Save the chart as an SVG file
-    chart.render_to_file('live_data_chart.svg')
+    def run_gui(self):
+        """Run the Tkinter main loop in a separate thread."""
+        self.root = tk.Tk()
+        self.root.title("Real-Time Plot with Tkinter and Matplotlib")
 
-    return chart
+        # Create a canvas to embed the plot in the Tkinter window
+        self.canvas = FigureCanvasTkAgg(self.figure, master=self.root)
+        self.canvas.get_tk_widget().pack()
 
-# Function to simulate real-time data generation
-def update_chart():
-    global x_data, y_data
-    while True:
-        # Simulate new data points
-        new_x = len(x_data) + 1
-        new_y = random.uniform(0, 10)
+        # Start the Tkinter main loop in the GUI thread
+        self.root.mainloop()
 
-        # Append new data to the list
-        x_data.append(new_x)
-        y_data.append(new_y)
+    def stop(self):
+        """Stop the data generation thread."""
+        self.running = False
 
-        # Create and display the updated chart
-        create_chart(x_data, y_data)
-
-        # Simulate a delay between incoming data
-        time.sleep(1)
-
-# Start the data update in a separate thread
-def start_real_time_plotting():
-    data_thread = threading.Thread(target=update_chart, daemon=True)
-    data_thread.start()
-
-# Run the plotting function
-start_real_time_plotting()
-
-# Keep the notebook running to simulate continuous updates (if using Jupyter notebook)
-while True:
-    time.sleep(1)
+# Create the application instance and run it
+#app = RealTimePlotApp()

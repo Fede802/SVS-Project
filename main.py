@@ -17,8 +17,8 @@ spawn_points = world.get_map().get_spawn_points()
 spectator = world.get_spectator()
 
 
-vPlot = plot_utility.Plot()
-
+vPlot = plot_utility.RealTimePlotApp()
+print("AFTER")
 
 min_ttc = float('inf')
 target_velocity = 50
