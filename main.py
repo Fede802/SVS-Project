@@ -9,7 +9,7 @@ client = carla.Client('localhost', 2000)
 print(client.get_available_maps())
 #3 bella dritta, 4 anche meglio
 client.load_world('Town04')
-client.set_timeout(40.0)
+client.set_timeout(50.0)
 
 world = client.get_world()
 spawn_points = world.get_map().get_spawn_points()
@@ -45,7 +45,8 @@ for v in world.get_actors().filter('vehicle.*'):
 
 #ego_vehicle = carla_utility.spawn_vehicle(world=world, vehicle_index=15, transform=carla.Transform(rotation = carla.Rotation(yaw=45)))
 #ego_vehicle = carla_utility.spawn_vehicle(world=world, vehicle_index=15, spawn_index=3)
-ego_vehicle = carla_utility.spawn_veichle_at(world=world, vehicle_index=15, spawn_point=carla.Transform(carla.Location(x=2.484849, y=-170.415253, z=2.900956)))
+#ego_vehicle = carla_utility.spawn_veichle_at(world=world, vehicle_index=15, spawn_point=carla.Transform(carla.Location(x=2.484849, y=-170.415253, z=2.900956)))
+ego_vehicle = carla_utility.spawn_veichle_bp_at(world=world, vehicle='vehicle.tesla.cybertruck', spawn_point=carla.Transform(carla.Location(x=380.786957, y=31.491543, z=13.309415), carla.Rotation(yaw = 180)))
 other_vehicle = carla_utility.spawn_vehicle(world=world, transform=carla.Transform(carla.Location(x=50)))
 
 radar = carla_utility.spawn_radar(world, ego_vehicle, range=100)
@@ -70,36 +71,44 @@ def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
         throttle (float): Valore tra 0.0 e 1.0.
         brake (float): Valore tra 0.0 e 1.0.
     """
-    errore_vel = velocita_target - velocita_corrente
+    errore_vel = velocita_target - (velocita_corrente * 3.6)
+    print(errore_vel)
+
+    errore_vel_perc = abs(errore_vel) * 100 / velocita_target
     
     # Inizializza throttle e brake
     throttle = 0.0
     brake = 0.0
     
     if errore_vel > 0:
+        throttle = 1.0 * errore_vel_perc
+    else:
+        brake = 1.0 * errore_vel_perc    
         # Accelerazione
-        throttle = min(0.5 + k_p * errore_vel, 1.0)
-    elif errore_vel < 0:
+     #   throttle = min(0.5 + k_p * errore_vel, 1.0)
+    #elif errore_vel < 0:
         # Decelerazione
-        brake = min(-k_p * errore_vel, 1.0)
+     #   brake = min(-k_p * errore_vel, 1.0)
 
-    if brake > 0:
-        throttle = 0.0
+    #if brake > 0:
+     #   throttle = 0.0
     
     # TTC Safety Override
-    if ttc < 1.5:
-        brake = 1.0
-        throttle = 0.0
+    #if ttc < 1.5:
+     #   brake = 1.0
+      #  throttle = 0.0
     
     return throttle, brake
 
-
+carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
+time.sleep(1)
 try:
     while running:
         current_location = ego_vehicle.get_location()
-        carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
+        
+        
         #debug_utility.draw_radar_bounding_box(radar)
-        #time.sleep(0.001)
+        
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 key = event.key
@@ -116,14 +125,19 @@ try:
                     #world.tick()
                     moving_forward = False
         throttle, brake = compute_controls(ego_vehicle.get_velocity().length(), target_velocity, min_ttc)
-        control = carla.VehicleControl(throttle=throttle, brake=brake)
+        #control = carla.VehicleControl(throttle=throttle, brake=brake)
+        control = carla.VehicleControl(throttle=0.5)
         ego_vehicle.apply_control(control)
-        world.tick()
-        pygame.display.flip()
+        #spectator.set_transform(ego_vehicle.get_transform())
+        carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
+        
+        #pygame.display.flip()
         #print("Actor transform: ", ego_vehicle.get_transform())
         #print("Actor forward vector (direction):", ego_vehicle.get_transform().get_forward_vector())
-        #print("Actor velocity: ", ego_vehicle.get_velocity(),", ",ego_vehicle.get_velocity().length(),"m/s, ",ego_vehicle.get_velocity().length()*3.6,"km/h")
-        
+    
+        print("Actor control: ",ego_vehicle.get_control().throttle," ", ego_vehicle.get_control().brake," Actor velocity: ", ego_vehicle.get_velocity(),", ",ego_vehicle.get_velocity().length(),"m/s, ",ego_vehicle.get_velocity().length()*3.6,"km/h")
+        world.tick()
+        #time.sleep(0.1)
 except KeyboardInterrupt:
     pass 
 finally:

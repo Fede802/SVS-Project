@@ -46,7 +46,7 @@ def draw_radar_point(radar: carla.Actor, point: carla.RadarDetection):
     radar_location = radar.get_location()
     shifted_max_range_point = to_np(__sub(__get_point_at(radar, point.depth), radar_location))
     debug.draw_line(radar_location, __add(from_np(__rotate(shifted_max_range_point, point.azimuth, point.altitude)),radar_location), life_time=0.1)
-    radar.get_world().tick()
+    #radar.get_world().tick()
 
 def draw_radar_bounding_box(radar: carla.Actor):
     debug = radar.get_world().debug
@@ -61,4 +61,4 @@ def draw_radar_bounding_box(radar: carla.Actor):
     debug.draw_line(radar_location, __add(from_np(__rotate(shifted_max_range_point, radar_h_fov, -radar_v_fov)),radar_location), life_time=0.1)
     debug.draw_line(radar_location, __add(from_np(__rotate(shifted_max_range_point, -radar_h_fov, radar_v_fov)),radar_location), life_time=0.1)
     debug.draw_line(radar_location, __add(from_np(__rotate(shifted_max_range_point, -radar_h_fov, -radar_v_fov)),radar_location), life_time=0.1)
-    radar.get_world().tick()
+    #radar.get_world().tick()
