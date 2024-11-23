@@ -11,11 +11,23 @@ client.set_timeout(10.0)
 world = client.get_world()
 spectator = world.get_spectator()
 
+min_ttc = float('inf')
+target_velocity = 50
+
 #TTC = (distance / relative_velocity) if relative_velocity != 0 else 9999
 # Simple callback function to print the number of detections
 def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
-    for m in data:
-        debug_utility.draw_radar_point(radar, m)
+    global min_ttc, min_distance
+    min_ttc = float('inf')
+
+    for detection, i in zip(data, range(len(data))):
+        absolute_speed = abs(detection.velocity)
+        debug_utility.draw_radar_point(radar, detection)
+        # Calculate TTC
+        if absolute_speed != 0:
+            ttc = detection.depth / absolute_speed
+            if ttc < min_ttc:
+                min_ttc = ttc
 
 pygame.init()
 pygame.display.set_mode((400, 300))
@@ -28,7 +40,7 @@ ego_vehicle = carla_utility.spawn_vehicle(world=world, vehicle_index=15)
 other_vehicle = carla_utility.spawn_vehicle(world=world, transform=carla.Transform(carla.Location(x=50)))
 
 radar = carla_utility.spawn_radar(world, ego_vehicle)
-radar.listen(lambda data: handle_measurement(data, radar))
+radar.listen(lambda data: radar_callback(data, radar))
 
 #vehicle.set_autopilot(True)
 running = True
@@ -57,8 +69,22 @@ try:
                     #world.tick()
                     moving_forward = False
 
-        
-        
+        ttc_danger = 1.5
+        ttc_chill = 3.0
+        # Braking control
+        if min_ttc < ttc_danger:
+            control = carla.VehicleControl()
+            control.brake = 1.0  # Maximum braking
+            ego_vehicle.apply_control(control)
+            print("Emergency braking activated!")
+        elif min_ttc < ttc_chill and min_ttc > ttc_danger:
+            control = carla.VehicleControl()
+            brake = 1.0 - ((min_ttc - ttc_danger) / ttc_danger)
+            control.brake = brake
+        else:
+            control = carla.VehicleControl()
+            control.throttle = min(1.0, target_velocity / ego_vehicle.get_velocity.length)  # Maintain constant speed
+            ego_vehicle.apply_control(control)
         world.tick()
         pygame.display.flip()
         #print("Actor transform: ", ego_vehicle.get_transform())
@@ -70,6 +96,7 @@ except KeyboardInterrupt:
 finally:
     pygame.quit()
     cv2.destroyAllWindows()
+    radar.stop()
     radar.destroy()
     ego_vehicle.destroy()
     other_vehicle.destroy()     
