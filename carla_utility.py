@@ -18,6 +18,17 @@ def move_spectator_to(spectator, to, distance=5.0, transform = carla.Transform(c
     spectator_transform = carla.Transform(back_location, to.rotation)
     spectator.set_transform(spectator_transform)
 
+def spawn_veichle_at(world, vehicle_index=0, spawn_point=carla.Transform(), pattern='vehicle.*', transform = carla.Transform()):
+    blueprint_library = world.get_blueprint_library()
+    vehicle_bp = blueprint_library.filter(pattern)[vehicle_index]   
+    spawn_point.location.x += transform.location.x
+    spawn_point.location.y += transform.location.y
+    spawn_point.location.z += transform.location.z
+    spawn_point.rotation.pitch += transform.rotation.pitch
+    spawn_point.rotation.roll += transform.rotation.roll
+    spawn_point.rotation.yaw += transform.rotation.yaw
+    return __spawn_actor(world, vehicle_bp, spawn_point)
+
 def spawn_vehicle(world, vehicle_index=0, spawn_index=0, pattern='vehicle.*', transform = carla.Transform()):
     blueprint_library = world.get_blueprint_library()
     vehicle_bp = blueprint_library.filter(pattern)[vehicle_index]

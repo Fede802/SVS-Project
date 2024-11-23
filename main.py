@@ -6,10 +6,18 @@ import debug_utility
 import carla_utility
 
 client = carla.Client('localhost', 2000)
-client.set_timeout(10.0)
+print(client.get_available_maps())
+#3 bella dritta, 4 anche meglio
+client.load_world('Town04')
+client.set_timeout(40.0)
 
 world = client.get_world()
+spawn_points = world.get_map().get_spawn_points()
 spectator = world.get_spectator()
+
+
+
+
 
 min_ttc = float('inf')
 target_velocity = 50
@@ -36,7 +44,8 @@ for v in world.get_actors().filter('vehicle.*'):
     v.destroy()
 
 #ego_vehicle = carla_utility.spawn_vehicle(world=world, vehicle_index=15, transform=carla.Transform(rotation = carla.Rotation(yaw=45)))
-ego_vehicle = carla_utility.spawn_vehicle(world=world, vehicle_index=15)
+#ego_vehicle = carla_utility.spawn_vehicle(world=world, vehicle_index=15, spawn_index=3)
+ego_vehicle = carla_utility.spawn_veichle_at(world=world, vehicle_index=15, spawn_point=carla.Transform(carla.Location(x=2.484849, y=-170.415253, z=2.900956)))
 other_vehicle = carla_utility.spawn_vehicle(world=world, transform=carla.Transform(carla.Location(x=50)))
 
 radar = carla_utility.spawn_radar(world, ego_vehicle)
