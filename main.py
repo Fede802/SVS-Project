@@ -18,6 +18,7 @@ spectator = world.get_spectator()
 
 
 vPlot = plot_utility.RealTimePlotApp()
+aPlot = plot_utility.RealTimePlotApp()
 print("AFTER")
 
 min_ttc = float('inf')
@@ -138,6 +139,7 @@ try:
     
         print("Actor control: ",ego_vehicle.get_control().throttle," ", ego_vehicle.get_control().brake," Actor velocity: ", ego_vehicle.get_velocity(),", ",ego_vehicle.get_velocity().length(),"m/s, ",ego_vehicle.get_velocity().length()*3.6,"km/h")
         vPlot.add_value(ego_vehicle.get_velocity().length()*3.6)
+        aPlot.add_value(ego_vehicle.get_acceleration().length())
         world.tick()
         #time.sleep(0.1)
 except KeyboardInterrupt:
