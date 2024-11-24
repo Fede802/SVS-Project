@@ -17,8 +17,8 @@ spawn_points = world.get_map().get_spawn_points()
 spectator = world.get_spectator()
 
 
-vPlot = plot_utility.RealTimePlotApp()
-aPlot = plot_utility.RealTimePlotApp()
+vPlot = plot_utility.RealTimePlotApp("Velocity")
+aPlot = plot_utility.RealTimePlotApp("Acceleration")
 print("AFTER")
 
 min_ttc = float('inf')
