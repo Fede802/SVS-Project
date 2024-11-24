@@ -16,10 +16,8 @@ world = client.get_world()
 spawn_points = world.get_map().get_spawn_points()
 spectator = world.get_spectator()
 
-
 vPlot = plot_utility.RealTimePlotApp("Velocity")
 aPlot = plot_utility.RealTimePlotApp("Acceleration")
-print("AFTER")
 
 min_ttc = float('inf')
 target_velocity = 50
@@ -54,10 +52,7 @@ other_vehicle = carla_utility.spawn_vehicle(world=world, transform=carla.Transfo
 radar = carla_utility.spawn_radar(world, ego_vehicle, range=100)
 radar.listen(lambda data: handle_measurement(data, radar))
 
-#vehicle.set_autopilot(True)
-running = True
-moving_forward = False
-#carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
+
 
 def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
     """
@@ -74,7 +69,7 @@ def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
         brake (float): Valore tra 0.0 e 1.0.
     """
     errore_vel = velocita_target - (velocita_corrente * 3.6)
-    print(errore_vel)
+    #print(errore_vel)
 
     errore_vel_perc = abs(errore_vel) * 100 / velocita_target
     
@@ -103,45 +98,46 @@ def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
     return throttle, brake
 
 carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
-time.sleep(1)
+running = True
+cruise_control = True
+
 try:
     while running:
-        current_location = ego_vehicle.get_location()
-        
-        
+        control = carla.VehicleControl()
         #debug_utility.draw_radar_bounding_box(radar)
-        
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 key = event.key
                 if key == pygame.QUIT or key == pygame.K_ESCAPE:
                     running = False
-                elif key == pygame.K_w:
-                    current_location.x += 2
-                    #world.tick()
-                    moving_forward = True
-                    ego_vehicle.apply_control(carla.VehicleControl(throttle=1.0))
-                elif key == pygame.K_s:
-                    current_location.x -= 2
-                    ego_vehicle.apply_control(carla.VehicleControl(brake=0.1))
-                    #world.tick()
-                    moving_forward = False
-        throttle, brake = compute_controls(ego_vehicle.get_velocity().length(), target_velocity, min_ttc)
-        control = carla.VehicleControl(throttle=throttle, brake=brake)
-        #control = carla.VehicleControl(throttle=0.5)
+                if key == pygame.K_w:
+                    control.throttle = 0.5
+                if key == pygame.K_a:
+                    continue
+                if key == pygame.K_s:
+                    control.brake = 0.5
+                if key == pygame.K_d:
+                    continue
+                if key == pygame.K_e:
+                    control.throttle = 0.5
+                    control.reverse = True
+                if key == pygame.K_r:
+                    cruise_control = True
+                if key == pygame.K_p:
+                    cruise_control = False  
+        if cruise_control:              
+            throttle, brake = compute_controls(ego_vehicle.get_velocity().length(), target_velocity, min_ttc)
+            control = carla.VehicleControl(throttle=throttle, brake=brake)
         ego_vehicle.apply_control(control)
-        #spectator.set_transform(ego_vehicle.get_transform())
         carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
         
-        #pygame.display.flip()
+        pygame.display.flip()
         #print("Actor transform: ", ego_vehicle.get_transform())
         #print("Actor forward vector (direction):", ego_vehicle.get_transform().get_forward_vector())
-    
-        print("Actor control: ",ego_vehicle.get_control().throttle," ", ego_vehicle.get_control().brake," Actor velocity: ", ego_vehicle.get_velocity(),", ",ego_vehicle.get_velocity().length(),"m/s, ",ego_vehicle.get_velocity().length()*3.6,"km/h")
+        #print("Actor control: ",ego_vehicle.get_control().throttle," ", ego_vehicle.get_control().brake," Actor velocity: ", ego_vehicle.get_velocity(),", ",ego_vehicle.get_velocity().length(),"m/s, ",ego_vehicle.get_velocity().length()*3.6,"km/h")
         vPlot.add_value(ego_vehicle.get_velocity().length()*3.6)
         aPlot.add_value(ego_vehicle.get_acceleration().length())
         world.tick()
-        #time.sleep(0.1)
 except KeyboardInterrupt:
     pass 
 finally:
