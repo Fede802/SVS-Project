@@ -18,7 +18,7 @@ spectator = world.get_spectator()
 vPlot = plot_utility.RealTimePlotApp("Velocity")
 aPlot = plot_utility.RealTimePlotApp("Acceleration")
 
-target_velocity = 50
+target_velocity = 120
 
 #TTC = (distance / relative_velocity) if relative_velocity != 0 else 9999
 # Simple callback function to print the number of detections
@@ -28,7 +28,7 @@ def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
 
     for detection, i in zip(data, range(len(data))):
         absolute_speed = abs(detection.velocity)
-        #debug_utility.draw_radar_point(radar, detection)
+        debug_utility.draw_radar_point(radar, detection)
         # Calculate TTC
         if absolute_speed != 0:
             ttc = detection.depth / absolute_speed
