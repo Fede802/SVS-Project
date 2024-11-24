@@ -13,13 +13,11 @@ client.load_world('Town04')
 client.set_timeout(50.0)
 
 world = client.get_world()
-spawn_points = world.get_map().get_spawn_points()
 spectator = world.get_spectator()
 
 vPlot = plot_utility.RealTimePlotApp("Velocity")
 aPlot = plot_utility.RealTimePlotApp("Acceleration")
 
-min_ttc = float('inf')
 target_velocity = 50
 
 #TTC = (distance / relative_velocity) if relative_velocity != 0 else 9999
@@ -58,8 +56,7 @@ def camera_callback(image):
     video_output = np.reshape(np.copy(image.raw_data), (image.height, image.width, 4))
 
 
-camera = carla_utility.spawn_camera(world=world, attach_to=ego_vehicle, transform=carla.Transform(carla.Location(x=-6, z=5), carla.Rotation(pitch=-30)))
-camera.listen(lambda image: camera_callback(image))
+
 
 
 def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
@@ -105,9 +102,15 @@ def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
     
     return throttle, brake
 
-carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
+show_in_carla = False
+show_in_camera = True
 running = True
 cruise_control = True
+
+if show_in_camera:
+    camera = carla_utility.spawn_camera(world=world, attach_to=ego_vehicle, transform=carla.Transform(carla.Location(x=-6, z=5), carla.Rotation(pitch=-30)))
+    camera.listen(lambda image: camera_callback(image))
+    cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
 
 try:
     while running:
@@ -137,15 +140,17 @@ try:
             throttle, brake = compute_controls(ego_vehicle.get_velocity().length(), target_velocity, min_ttc)
             control = carla.VehicleControl(throttle=throttle, brake=brake)
         ego_vehicle.apply_control(control)
-        carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
-        
+
+        if show_in_carla:
+            carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
+        if show_in_camera:
+            cv2.imshow('RGB Camera', video_output)
         pygame.display.flip()
         #print("Actor transform: ", ego_vehicle.get_transform())
         #print("Actor forward vector (direction):", ego_vehicle.get_transform().get_forward_vector())
         #print("Actor control: ",ego_vehicle.get_control().throttle," ", ego_vehicle.get_control().brake," Actor velocity: ", ego_vehicle.get_velocity(),", ",ego_vehicle.get_velocity().length(),"m/s, ",ego_vehicle.get_velocity().length()*3.6,"km/h")
         vPlot.add_value(ego_vehicle.get_velocity().length()*3.6)
         aPlot.add_value(ego_vehicle.get_acceleration().length())
-        cv2.imshow('RGB Camera', video_output)
         world.tick()
 except KeyboardInterrupt:
     pass 

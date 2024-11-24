@@ -1,4 +1,4 @@
-import carla, time
+import carla, time, debug_utility
 
 def __spawn_actor(world, blueprint, spawn_point, attach_to = None):
     actor = world.spawn_actor(blueprint, spawn_point, attach_to)
