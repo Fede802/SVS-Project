@@ -107,8 +107,7 @@ try:
         #debug_utility.draw_radar_bounding_box(radar)
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
-                key = event.key
-                if key == pygame.QUIT or key == pygame.K_ESCAPE:
+                if event.key == pygame.QUIT or event.key == pygame.K_ESCAPE:
                     running = False
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
@@ -125,22 +124,7 @@ try:
         if keys[pygame.K_r]:
             cruise_control = True
         if keys[pygame.K_p]:
-            cruise_control = False
-                # if key == pygame.K_w:
-                #     control.throttle = 0.5
-                # if key == pygame.K_a:
-                #     continue
-                # if key == pygame.K_s:
-                #     control.brake = 0.5
-                # if key == pygame.K_d:
-                #     continue
-                # if key == pygame.K_e:
-                #     control.throttle = 0.5
-                #     control.reverse = True
-                # if key == pygame.K_r:
-                #     cruise_control = True
-                # if key == pygame.K_p:
-                #     cruise_control = False  
+            cruise_control = False 
         if cruise_control:              
             throttle, brake = compute_controls(ego_vehicle.get_velocity().length(), target_velocity, min_ttc)
             control = carla.VehicleControl(throttle=throttle, brake=brake)
