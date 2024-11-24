@@ -115,9 +115,9 @@ try:
         if keys[pygame.K_s]:
             control.brake = 0.5
         if keys[pygame.K_a]:
-            continue
+            carla_utility.steer_left(ego_vehicle)
         if keys[pygame.K_d]:
-            continue
+            carla_utility.steer_right(ego_vehicle)
         if keys[pygame.K_e]:
             control.throttle = 0.5
             control.reverse = True
