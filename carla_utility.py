@@ -17,7 +17,7 @@ def move_spectator_to(world, spectator, to, distance=5.0, transform = carla.Tran
     spectator.set_transform(spectator_transform)
     #world.tick()
 
-def spawn_veichle_bp_at(world, vehicle, spawn_point=carla.Transform(), transform = carla.Transform()):
+def spawn_vehicle_bp_at(world, vehicle, spawn_point=carla.Transform(), transform = carla.Transform()):
     blueprint_library = world.get_blueprint_library()
     vehicle_bp = blueprint_library.find(vehicle)   
     spawn_point.location.x += transform.location.x
@@ -28,7 +28,7 @@ def spawn_veichle_bp_at(world, vehicle, spawn_point=carla.Transform(), transform
     spawn_point.rotation.yaw += transform.rotation.yaw
     return __spawn_actor(world, vehicle_bp, spawn_point)
 
-def spawn_veichle_at(world, vehicle_index=0, spawn_point=carla.Transform(), pattern='vehicle.*', transform = carla.Transform()):
+def spawn_vehicle_at(world, vehicle_index=0, spawn_point=carla.Transform(), pattern='vehicle.*', transform = carla.Transform()):
     blueprint_library = world.get_blueprint_library()
     vehicle_bp = blueprint_library.filter(pattern)[vehicle_index]   
     spawn_point.location.x += transform.location.x
@@ -69,3 +69,55 @@ def spawn_radar(world, attach_to, transform=carla.Transform(carla.Location(x=1.2
 
 def draw_on_screen(world, transform, content='O', color=carla.Color(0, 255, 0), life_time=0.1):
     world.debug.draw_string(transform.location, content, color=color, life_time=life_time)   
+
+
+def compute_cruise_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
+    """
+    Calcola throttle e brake in base alla velocità corrente, velocità target e TTC.
+    
+    Args:
+        velocita_corrente (float): Velocità attuale del veicolo in m/s.
+        velocita_target (float): Velocità desiderata in m/s.
+        ttc (float): Time to collision in secondi.
+        k_p (float): Fattore di proporzionalità per il controllo.
+        
+    Returns:
+        throttle (float): Valore tra 0.0 e 1.0.
+        brake (float): Valore tra 0.0 e 1.0.
+    """
+    errore_vel = velocita_target - (velocita_corrente * 3.6)
+    #print(errore_vel)
+
+    errore_vel_perc = abs(errore_vel) * 100 / velocita_target
+    
+    # Inizializza throttle e brake
+    throttle = 0.0
+    brake = 0.0
+
+    # If 
+    if ttc < 1.5:
+        brake = 1.0
+        throttle = 0.0
+    elif ttc < 3.0:
+        brake = 0.5 
+        throttle = 0.0
+    else:
+    # Velocity Check, without obstacles
+        if errore_vel > 0:
+            throttle = 1.0 * errore_vel_perc
+        else:
+            brake = 1.0 * errore_vel_perc    
+       
+    # if errore_vel < 0:
+    # #    Decelerazione
+    #     brake = min(-k_p * errore_vel, 1.0)
+
+    #if brake > 0:
+     #   throttle = 0.0
+    
+    # TTC Safety Override
+    #if ttc < 1.5:
+     #   brake = 1.0
+      #  throttle = 0.0
+    
+    return throttle, brake
