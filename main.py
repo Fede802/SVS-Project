@@ -115,7 +115,7 @@ if show_in_camera:
 try:
     while running:
         control = carla.VehicleControl()
-        #debug_utility.draw_radar_bounding_box(radar)
+        debug_utility.draw_radar_bounding_box(radar)
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.QUIT or event.key == pygame.K_ESCAPE:
