@@ -52,6 +52,14 @@ other_vehicle = carla_utility.spawn_vehicle(world=world, transform=carla.Transfo
 radar = carla_utility.spawn_radar(world, ego_vehicle, range=100)
 radar.listen(lambda data: handle_measurement(data, radar))
 
+video_output = np.zeros((600, 800, 4), dtype=np.uint8)
+def camera_callback(image):
+    global video_output
+    video_output = np.reshape(np.copy(image.raw_data), (image.height, image.width, 4))
+
+
+camera = carla_utility.spawn_camera(world=world, attach_to=ego_vehicle, transform=carla.Transform(carla.Location(x=-6, z=5), carla.Rotation(pitch=-30)))
+camera.listen(lambda image: camera_callback(image))
 
 
 def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
@@ -137,6 +145,7 @@ try:
         #print("Actor control: ",ego_vehicle.get_control().throttle," ", ego_vehicle.get_control().brake," Actor velocity: ", ego_vehicle.get_velocity(),", ",ego_vehicle.get_velocity().length(),"m/s, ",ego_vehicle.get_velocity().length()*3.6,"km/h")
         vPlot.add_value(ego_vehicle.get_velocity().length()*3.6)
         aPlot.add_value(ego_vehicle.get_acceleration().length())
+        cv2.imshow('RGB Camera', video_output)
         world.tick()
 except KeyboardInterrupt:
     pass 

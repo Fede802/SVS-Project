@@ -7,7 +7,6 @@ def __spawn_actor(world, blueprint, spawn_point, attach_to = None):
 
 def move_spectator_to(world, spectator, to, distance=5.0, transform = carla.Transform(carla.Location(x = 5, z=5), carla.Rotation(pitch=-30))):
     back_location = to.location - to.get_forward_vector() * distance
-    
     back_location.x += transform.location.x
     back_location.y += transform.location.y
     back_location.z += transform.location.z
