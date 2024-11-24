@@ -110,21 +110,37 @@ try:
                 key = event.key
                 if key == pygame.QUIT or key == pygame.K_ESCAPE:
                     running = False
-                if key == pygame.K_w:
-                    control.throttle = 0.5
-                if key == pygame.K_a:
-                    continue
-                if key == pygame.K_s:
-                    control.brake = 0.5
-                if key == pygame.K_d:
-                    continue
-                if key == pygame.K_e:
-                    control.throttle = 0.5
-                    control.reverse = True
-                if key == pygame.K_r:
-                    cruise_control = True
-                if key == pygame.K_p:
-                    cruise_control = False  
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_w]:
+            control.throttle = 0.5
+        if keys[pygame.K_s]:
+            control.brake = 0.5
+        if keys[pygame.K_a]:
+            continue
+        if keys[pygame.K_d]:
+            continue
+        if keys[pygame.K_e]:
+            control.throttle = 0.5
+            control.reverse = True
+        if keys[pygame.K_r]:
+            cruise_control = True
+        if keys[pygame.K_p]:
+            cruise_control = False
+                # if key == pygame.K_w:
+                #     control.throttle = 0.5
+                # if key == pygame.K_a:
+                #     continue
+                # if key == pygame.K_s:
+                #     control.brake = 0.5
+                # if key == pygame.K_d:
+                #     continue
+                # if key == pygame.K_e:
+                #     control.throttle = 0.5
+                #     control.reverse = True
+                # if key == pygame.K_r:
+                #     cruise_control = True
+                # if key == pygame.K_p:
+                #     cruise_control = False  
         if cruise_control:              
             throttle, brake = compute_controls(ego_vehicle.get_velocity().length(), target_velocity, min_ttc)
             control = carla.VehicleControl(throttle=throttle, brake=brake)
