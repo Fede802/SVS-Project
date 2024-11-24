@@ -70,17 +70,3 @@ def spawn_radar(world, attach_to, transform=carla.Transform(carla.Location(x=1.2
 
 def draw_on_screen(world, transform, content='O', color=carla.Color(0, 255, 0), life_time=0.1):
     world.debug.draw_string(transform.location, content, color=color, life_time=life_time)   
-
-def steer_left(vehicle, throttle=0.6):
-    control = carla.VehicleControl()
-    control.throttle = throttle
-    control.steer = -0.38
-    vehicle.apply_control(control)
-    time.sleep(2)
-
-def steer_right(vehicle, throttle=0.6):
-    control = carla.VehicleControl()
-    control.throttle = throttle
-    control.steer = 0.38
-    vehicle.apply_control(control)
-    time.sleep(2)
