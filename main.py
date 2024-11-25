@@ -8,6 +8,7 @@ import plot_utility
 
 client = carla.Client('localhost', 2000)
 print(client.get_available_maps())
+#time.sleep(1000)
 #3 bella dritta, 4 anche meglio
 client.load_world('Town04')
 client.set_timeout(50.0)
@@ -15,8 +16,8 @@ client.set_timeout(50.0)
 world = client.get_world()
 spectator = world.get_spectator()
 
-#vPlot = plot_utility.RealTimePlotApp("Velocity")
-#aPlot = plot_utility.RealTimePlotApp("Acceleration")
+vPlot = plot_utility.RealTimePlotApp("Velocity")
+aPlot = plot_utility.RealTimePlotApp("Acceleration")
 
 target_velocity = 70
 
@@ -50,7 +51,7 @@ ego_vehicle = carla_utility.spawn_veichle_bp_at(world=world, vehicle='vehicle.te
 #other_vehicle = carla_utility.spawn_vehicle(world=world, transform=carla.Transform(carla.Location(x=50)))
 other_vehicle = carla_utility.spawn_veichle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
 
-radar = carla_utility.spawn_radar(world, ego_vehicle, range=160)
+radar = carla_utility.spawn_radar(world, ego_vehicle, range=54)
 radar.listen(lambda data: handle_measurement(data, radar))
 
 video_output = np.zeros((600, 800, 4), dtype=np.uint8)
@@ -85,7 +86,7 @@ def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
     throttle = 0.0
     brake = 0.0
     
-    if min_ttc > 0 and min_ttc != float('inf'):
+    if min_ttc > 0 and min_ttc < float('inf'):
         print(min_ttc)
         brake = 1.0
     else:    
@@ -110,10 +111,11 @@ def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
     return throttle, brake
 
 carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
-show_in_carla = True
-show_in_camera = False
+show_in_carla = False
+show_in_camera = True
 running = True
 cruise_control = True
+lastUpdate = 0
 
 if show_in_camera:
     camera = carla_utility.spawn_camera(world=world, attach_to=ego_vehicle, transform=carla.Transform(carla.Location(x=-6, z=5), carla.Rotation(pitch=-30)))
@@ -150,6 +152,7 @@ try:
         if cruise_control:              
             throttle, brake = compute_controls(ego_vehicle.get_velocity().length(), target_velocity, min_ttc)
             control = carla.VehicleControl(throttle=throttle, brake=brake)
+        print(control)    
         ego_vehicle.apply_control(control)
         
 
@@ -161,8 +164,11 @@ try:
         #print("Actor transform: ", ego_vehicle.get_transform())
         #print("Actor forward vector (direction):", ego_vehicle.get_transform().get_forward_vector())
         #print("Actor control: ",ego_vehicle.get_control().throttle," ", ego_vehicle.get_control().brake," Actor velocity: ", ego_vehicle.get_velocity(),", ",ego_vehicle.get_velocity().length(),"m/s, ",ego_vehicle.get_velocity().length()*3.6,"km/h")
-        #vPlot.add_value(ego_vehicle.get_velocity().length()*3.6)
-        #aPlot.add_value(ego_vehicle.get_acceleration().length())
+        
+        if(time.time() - lastUpdate > 0.2):
+            vPlot.add_value(ego_vehicle.get_velocity().length()*3.6)
+            aPlot.add_value(ego_vehicle.get_acceleration().length())
+            lastUpdate = time.time()
         world.tick()
 except KeyboardInterrupt:
     pass 

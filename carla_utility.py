@@ -67,10 +67,10 @@ def spawn_camera(world, attach_to=None, transform=carla.Transform(carla.Location
     #camera_bp.set_attribute('sensor_tick', '0')
     return __spawn_actor(world, camera_bp, transform, attach_to=attach_to)
 
-def spawn_radar(world, attach_to, transform=carla.Transform(carla.Location(x=1.2, z=2), carla.Rotation(pitch=4)), range=10, points_per_second=10000):
+def spawn_radar(world, attach_to, transform=carla.Transform(carla.Location(x=1.2, z=2), carla.Rotation(pitch=0)), range=10, points_per_second=10000):
     radar_bp = world.get_blueprint_library().find('sensor.other.radar')
-    radar_bp.set_attribute('horizontal_fov', '7')
-    radar_bp.set_attribute('vertical_fov', '7')
+    radar_bp.set_attribute('horizontal_fov', '1')
+    radar_bp.set_attribute('vertical_fov', '1')
     radar_bp.set_attribute('range', str(range))
     radar_bp.set_attribute('points_per_second', str(points_per_second))
     return __spawn_actor(world, radar_bp, transform, attach_to=attach_to)
