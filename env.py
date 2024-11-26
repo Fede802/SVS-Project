@@ -59,17 +59,20 @@ class CarlaEnv(gym.Env):
 
         self.leader_vehicle = self.world.spawn_actor(
             self.vehicle_bp,
-            carla.Transform(carla.Location(leader_location), leader_rotation),
-            attach_to=self.ego_vehicle
+            carla.Transform(leader_location, leader_rotation),
+            #attach_to=self.ego_vehicle
         )
 
     
-    def reset(self):
+    def reset(self, seed=None):
         # Destroy existing actors
         if self.leader_vehicle is not None:
             self.leader_vehicle.destroy()
         if self.ego_vehicle is not None:
             self.ego_vehicle.destroy()
+        if self.radar_sensor is not None:
+            self.radar_sensor.destroy()
+            self.radar_sensor = None
 
         self.spawn_vehicles()
         
@@ -89,9 +92,13 @@ class CarlaEnv(gym.Env):
         # Reset veichle state
         self.leader_vehicle.set_target_velocity(carla.Vector3D(self.TARGET_SPEED, 0, 0))
         self.ego_vehicle.set_target_velocity(carla.Vector3D(0, 0, 0))
+
+        # Wait for simulation to progress
+        self.world.tick()
+
         
         # Return initial observation
-        return self._get_observation()
+        return self._get_observation(), {}
     
     def _radar_callback(self, radar_data):
         distances = []
@@ -115,6 +122,7 @@ class CarlaEnv(gym.Env):
             }
 
     def step(self, action):
+
         # Apply action to the leader vehicle
         if action == 0:  # Decelerate
             self.leader_vehicle.set_target_velocity(carla.Vector3D(self.TARGET_SPEED * 0.5, 0, 0))
@@ -131,14 +139,9 @@ class CarlaEnv(gym.Env):
         reward = self._compute_reward(observation)
         done = self._check_done()
         
-        return observation, reward, done, {}
+        return observation, reward, done, False, {}
     
     def _get_observation(self):
-        
-        
-        # Default observation if radar hasn't yet detected anything
-        if self.radar_data is None:
-            return np.array([100.0, self.TARGET_SPEED, 0.0], dtype=np.float32)
         
         # Extract distance and relative speed from radar data
         distance = self.radar_data["distance"]
