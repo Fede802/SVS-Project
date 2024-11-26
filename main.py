@@ -5,8 +5,10 @@ import numpy as np
 import debug_utility
 import carla_utility
 import plot_utility
+from server import start_servers, send_data, close_servers
 
 client = carla.Client('localhost', 2000)
+start_servers()
 print(client.get_available_maps())
 #time.sleep(1000)
 #3 bella dritta, 4 anche meglio
@@ -166,8 +168,7 @@ try:
         #print("Actor control: ",ego_vehicle.get_control().throttle," ", ego_vehicle.get_control().brake," Actor velocity: ", ego_vehicle.get_velocity(),", ",ego_vehicle.get_velocity().length(),"m/s, ",ego_vehicle.get_velocity().length()*3.6,"km/h")
         
         if(time.time() - lastUpdate > 0.2):
-            vPlot.add_value(ego_vehicle.get_velocity().length()*3.6)
-            aPlot.add_value(ego_vehicle.get_acceleration().length())
+            send_data({"velocity": ego_vehicle.get_velocity().length(), "acceleration": ego_vehicle.get_acceleration().length()})
             lastUpdate = time.time()
         world.tick()
 except KeyboardInterrupt:
@@ -178,4 +179,5 @@ finally:
     radar.stop()
     radar.destroy()
     ego_vehicle.destroy()
-    other_vehicle.destroy()     
+    other_vehicle.destroy()    
+    close_servers() 

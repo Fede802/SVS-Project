@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT Graphs</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+    <h1>Grafici in Tempo Reale con MQTT</h1>
+
+    <!-- Primo grafico -->
+    <canvas id="chart1" width="400" height="200"></canvas>
+    <br><br>
+
+    <!-- Secondo grafico -->
+    <canvas id="chart2" width="400" height="200"></canvas>
+
+    <script>
+        // Configura il primo grafico con Chart.js
+        const ctx1 = document.getElementById('chart1').getContext('2d');
+        const accelerationChart = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: [], // Etichette (timestamp)
+                datasets: [{
+                    label: 'Acceleration',
+                    data: [],
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Tempo'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Valore'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Configura il secondo grafico con Chart.js
+        const ctx2 = document.getElementById('chart2').getContext('2d');
+        const velocityChart = new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: [], // Etichette (timestamp)
+                datasets: [{
+                    label: 'Velocity',
+                    data: [],
+                    borderColor: 'rgba(192, 75, 75, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Tempo'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Valore'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Connessione al broker MQTT
+        const brokerUrl = 'ws://localhost:9001';  // Usa WebSocket per MQTT
+        const topic = 'grafico/dati';            // Topic da cui ricevere i dati
+        const client = mqtt.connect(brokerUrl);
+
+        client.on('connect', () => {
+            console.log('Connesso al broker MQTT');
+            client.subscribe(topic);
+        });
+
+        client.on('message', (topic, message) => {
+            const data = JSON.parse(message.toString());
+            const currentTime = new Date().toLocaleTimeString();
+
+            // Aggiungi i dati al primo grafico
+            accelerationChart.data.labels.push(currentTime);
+            accelerationChart.data.datasets[0].data.push(data.acceleration);
+
+            // Aggiungi i dati trasformati al secondo grafico
+            velocityChart.data.labels.push(currentTime);
+            velocityChart.data.datasets[0].data.push(data.velocity);
+
+            // Aggiorna entrambi i grafici
+            accelerationChart.update();
+            velocityChart.update();
+        });
+
+        client.on('error', (error) => {
+            console.error('Errore MQTT:', error);
+        });
+    </script>
+</body>
+</html>
