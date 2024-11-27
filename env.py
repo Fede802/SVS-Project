@@ -17,12 +17,17 @@ class CarlaEnv(gym.Env):
         self.client.set_timeout(10.0)
         self.world = self.client.load_world('Town04')
         
-        #Configure space actions and observation
-        self.action_space = spaces.Discrete(3) # 0: Decelerating, 1: Keeping speed, 2: Accelerating
-        #Configure space observation
+        # Observation space: [distance, leader_speed, ego_speed, relative_speed]
         self.observation_space = spaces.Box(
-            low=np.array([0.0, 0.0, -1.0]), # [distance, speed, relative speed]
-            high=np.array([100.0, 30.0, 1.0]), #[max_distance, max_speed]
+            low=np.array([0.0, 0.0, 0.0, -1.0]),
+            high=np.array([100.0, 30.0, 30.0, 1.0]),
+            dtype=np.float32
+        )
+
+        # Action space: Continuous acceleration between -1.0 (max brake) and 1.0 (max throttle)
+        self.action_space = spaces.Box(
+            low=np.array([-1.0]),
+            high=np.array([1.0]),
             dtype=np.float32
         )
         
@@ -33,21 +38,23 @@ class CarlaEnv(gym.Env):
 
         self.leader_vehicle = None
         self.ego_vehicle = None
-
-        #Simulation state
         self.radar_sensor = None
+
 
         self.radar_data = {  # Default radar data
             "distance": 100.0,  # Default distance if no object is detected
             "relative_speed": 0.0  # Default relative speed
         }
 
+        #Track oscillations in actions
+        self.previous_action = 0.0
+
     def spawn_vehicles(self):
         # Spawn vehicles
         spawn_point_ego = self.spawn_points[1]
         self.ego_vehicle = self.world.spawn_actor(self.vehicle_bp, spawn_point_ego)
 
-        #Spawn at different random distance
+        # Leader vehicle spawn at random distance
         random_distance = rnd.uniform(20.0, 100.0)
         # Calculate the leader's location 10 meters behind the ego vehicle
         leader_location = carla.Location(
@@ -55,12 +62,12 @@ class CarlaEnv(gym.Env):
             y=spawn_point_ego.location.y,
             z=spawn_point_ego.location.z,
         )
+
         leader_rotation = spawn_point_ego.rotation  # Keep the same rotation as the ego
 
         self.leader_vehicle = self.world.spawn_actor(
             self.vehicle_bp,
-            carla.Transform(leader_location, leader_rotation),
-            #attach_to=self.ego_vehicle
+            carla.Transform(leader_location, leader_rotation)
         )
 
     
@@ -87,7 +94,6 @@ class CarlaEnv(gym.Env):
             attach_to=self.leader_vehicle
         )
         self.radar_sensor.listen(self._radar_callback)
-
 
         # Reset veichle state
         self.leader_vehicle.set_target_velocity(carla.Vector3D(self.TARGET_SPEED, 0, 0))
@@ -123,54 +129,87 @@ class CarlaEnv(gym.Env):
 
     def step(self, action):
 
-        # Apply action to the leader vehicle
-        if action == 0:  # Decelerate
-            self.leader_vehicle.set_target_velocity(carla.Vector3D(self.TARGET_SPEED * 0.5, 0, 0))
-        elif action == 1:  # Maintain speed
-            self.leader_vehicle.set_target_velocity(carla.Vector3D(self.TARGET_SPEED, 0, 0))
-        elif action == 2:  # Accelerate
-            self.leader_vehicle.set_target_velocity(carla.Vector3D(self.TARGET_SPEED * 1.2, 0, 0))
-        
-        # Wait for simulation to progress
+        # Convert the numpy action to a native float for CARLA
+        throttle = float(max(0.0, action[0]))
+        brake = float(max(0.0, -action[0]))
+
+        print(f"Throttle: {throttle}, Brake: {brake}")
+
+        #Apply action to throttle and brake
+        control = carla.VehicleControl()
+        control.throttle = throttle
+        control.brake = brake
+        self.leader_vehicle.apply_control(control)
+
         self.world.tick()
 
-        # Gather observation, compute reward, and check if the simulation is done
         observation = self._get_observation()
-        reward = self._compute_reward(observation)
-        done = self._check_done()
-        
+        reward = self._compute_reward(observation, action)
+        done = self._check_done(observation)
+
         return observation, reward, done, False, {}
     
     def _get_observation(self):
-        
-        # Extract distance and relative speed from radar data
         distance = self.radar_data["distance"]
         relative_speed = self.radar_data["relative_speed"]
 
-        # Leader speed from its velocity
         leader_speed = np.linalg.norm([
             self.leader_vehicle.get_velocity().x,
             self.leader_vehicle.get_velocity().y,
             self.leader_vehicle.get_velocity().z
         ])
+
+        ego_speed = np.linalg.norm([
+            self.ego_vehicle.get_velocity().x,
+            self.ego_vehicle.get_velocity().y,
+            self.ego_vehicle.get_velocity().z
+        ])
+
+        return np.array([distance, leader_speed, ego_speed, relative_speed], dtype=np.float32)
+
+    def _compute_reward(self, observation, action):
+        distance, leader_speed, ego_speed, relative_speed = observation
+
+        if 10.0 < distance < 30.0: 
+            distance_reward = 1.0
+        elif distance >= 30.0: 
+            distance_reward = -2.0
+        elif distance <= 5.0: 
+            distance_reward = -10.0
+        else:
+            distance_reward = -1.0 
+
+
+        leader_stopped = leader_speed < 0.1
+        if leader_stopped and distance <= 5.0:
+            distance_reward -= 5.0
+        elif leader_stopped and distance >= 50.0:
+            distance_reward -= 5.0
+        elif leader_stopped and 10.0 < distance < 20.0:
+            distance_reward += 10.0
         
-        return np.array([distance, leader_speed, relative_speed], dtype=np.float32)
+        # Speed reward
+        speed_reward = -abs(leader_speed - self.TARGET_SPEED) / self.TARGET_SPEED
 
-    def _compute_reward(self, observation):
-        distance, leader_speed, relative_speed = observation
+        # Action stability penalty (6)
+        action_penalty = -abs(action[0] - self.previous_action)
 
-        #Mantaining safe distance and target speed reward
-        if 10.0 < distance < 30.0: distance_reward = 1.0
-        else: distance_reward = -1.0
+        self.previous_action = action[0]
 
-        speed_reward = -abs(leader_speed - self.TARGET_SPEED)
+        return distance_reward + speed_reward + action_penalty
 
-        return distance_reward + speed_reward
+    def _check_done(self, observation):
+        distance, leader_speed, ego_speed, relative_speed = observation
 
-    def _check_done(self):
+        leader_stopped = leader_speed < 0.1
 
-        # Check if the leader vehicle stops too close to the ego vehicle
-        if self.radar_data and self.radar_data["distance"] < 5.0:  # Unsafe close distance
+        # Stop the simulation if the leader vehicle is too longer than 50 meters from the ego vehicle
+        if distance >= 50.0 and leader_stopped:
+            print("Leader vehicle is too longer than 50 meters from the ego vehicle.")
+            return True
+        
+        if distance <= 5.0:
+            print("Collision detected.")
             return True
         
         return False
