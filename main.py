@@ -16,8 +16,7 @@ client.set_timeout(50.0)
 world = client.get_world()
 spectator = world.get_spectator()
 
-vPlot = plot_utility.RealTimePlotApp("Velocity")
-aPlot = plot_utility.RealTimePlotApp("Acceleration")
+
 
 target_velocity = 70
 
@@ -29,9 +28,9 @@ def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
     min_ttc = float('inf')
     
     for detection, i in zip(data, range(len(data))):
-        print(detection)
+        #print(detection)
         absolute_speed = abs(detection.velocity)
-        debug_utility.draw_radar_point(radar, detection)
+        #debug_utility.draw_radar_point(radar, detection)
         # Calculate TTC
         if absolute_speed != 0:
             ttc = detection.depth / absolute_speed
@@ -49,7 +48,7 @@ for v in world.get_actors().filter('vehicle.*'):
 #ego_vehicle = carla_utility.spawn_veichle_at(world=world, vehicle_index=15, spawn_point=carla.Transform(carla.Location(x=2.484849, y=-170.415253, z=2.900956)))
 ego_vehicle = carla_utility.spawn_veichle_bp_at(world=world, vehicle='vehicle.tesla.cybertruck', spawn_point=carla.Transform(carla.Location(x=380.786957, y=31.491543, z=13.309415), carla.Rotation(yaw = 180)))
 #other_vehicle = carla_utility.spawn_vehicle(world=world, transform=carla.Transform(carla.Location(x=50)))
-other_vehicle = carla_utility.spawn_veichle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
+#other_vehicle = carla_utility.spawn_veichle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
 
 radar = carla_utility.spawn_radar(world, ego_vehicle, range=54)
 radar.listen(lambda data: handle_measurement(data, radar))
@@ -87,7 +86,7 @@ def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
     brake = 0.0
     
     if min_ttc > 0 and min_ttc < float('inf'):
-        print(min_ttc)
+        #print(min_ttc)
         brake = 1.0
     else:    
         if errore_vel > 0:
@@ -111,8 +110,8 @@ def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
     return throttle, brake
 
 carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
-show_in_carla = False
-show_in_camera = True
+show_in_carla = True
+show_in_camera = False
 running = True
 cruise_control = True
 lastUpdate = 0
@@ -125,10 +124,11 @@ if show_in_camera:
 try:
     while running:
         control = carla.VehicleControl()
-        other_vehicle.apply_control(carla.VehicleControl(throttle=0.5))
+        #other_vehicle.apply_control(carla.VehicleControl(throttle=0.5))
         #control.throttle = 1.0
 
-        debug_utility.draw_radar_bounding_box(radar)
+        #debug_utility.draw_radar_bounding_box(radar)
+        #debug_utility.get_plane_base_vectors(radar)
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.QUIT or event.key == pygame.K_ESCAPE:
@@ -152,7 +152,6 @@ try:
         if cruise_control:              
             throttle, brake = compute_controls(ego_vehicle.get_velocity().length(), target_velocity, min_ttc)
             control = carla.VehicleControl(throttle=throttle, brake=brake)
-        print(control)    
         ego_vehicle.apply_control(control)
         
 
@@ -166,8 +165,8 @@ try:
         #print("Actor control: ",ego_vehicle.get_control().throttle," ", ego_vehicle.get_control().brake," Actor velocity: ", ego_vehicle.get_velocity(),", ",ego_vehicle.get_velocity().length(),"m/s, ",ego_vehicle.get_velocity().length()*3.6,"km/h")
         
         if(time.time() - lastUpdate > 0.2):
-            vPlot.add_value(ego_vehicle.get_velocity().length()*3.6)
-            aPlot.add_value(ego_vehicle.get_acceleration().length())
+            #vPlot.add_value(ego_vehicle.get_velocity().length()*3.6)
+            #aPlot.add_value(ego_vehicle.get_acceleration().length())
             lastUpdate = time.time()
         world.tick()
 except KeyboardInterrupt:

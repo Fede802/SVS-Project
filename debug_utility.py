@@ -36,9 +36,14 @@ def from_np(v3d: np.ndarray):
     v3d = v3d.reshape(-1)
     return carla.Vector3D(v3d[0], v3d[1],v3d[2])
 
+def get_point_at_general(start: carla.Vector3D, radar: carla.Actor, at: int):
+    radar_f_vector = radar.get_transform().get_forward_vector()
+    #print(radar_f_vector.length())
+    return __vector_scalar_op(start, radar_f_vector, lambda a, b: a + at * b)
 def get_point_at(radar: carla.Actor, at: int):
     radar_location = radar.get_location()
     radar_f_vector = radar.get_transform().get_forward_vector()
+    #print(radar_f_vector.length())
     return __vector_scalar_op(radar_location, radar_f_vector, lambda a, b: a + at * b)
 
 def draw_radar_point(radar: carla.Actor, point: carla.RadarDetection):
@@ -62,3 +67,37 @@ def draw_radar_bounding_box(radar: carla.Actor):
     debug.draw_line(radar_location, __add(from_np(__rotate(shifted_max_range_point, -radar_h_fov, radar_v_fov)),radar_location), life_time=0.1)
     debug.draw_line(radar_location, __add(from_np(__rotate(shifted_max_range_point, -radar_h_fov, -radar_v_fov)),radar_location), life_time=0.1)
     #radar.get_world().tick()
+
+def __vector_scalar_op(p3d: carla.Vector3D, transaltion: carla.Vector3D, op):
+    return carla.Vector3D(op(p3d.x, transaltion.x), op(p3d.y, transaltion.y), op(p3d.z, transaltion.z))
+
+def normalize(v):
+    norm = np.linalg.norm(v)
+    if norm == 0: 
+       return v
+    return v / norm  
+
+def get_plane_base_vectors(radar: carla.Actor):
+    debug = radar.get_world().debug
+    normal_vector = to_np(radar.get_transform().get_forward_vector())
+    temp_v = np.array([1,0,0])
+    if not np.any(np.cross(normal_vector, temp_v)):
+        temp_v = np.array([0,1,0])
+
+    v1 = normalize(np.cross(normal_vector, temp_v)) 
+    v2 = normalize(np.cross(normal_vector, v1))  
+    v1 = from_np(v1)
+    v2 = from_np(v2)
+    h = 1
+    vn = carla.Vector3D(x = 0, y = 0, z = 0)
+    
+    p1 = __add(__add(radar.get_location(), __vector_scalar_op(vn, v1, lambda a, b: h * b)),  __vector_scalar_op(vn, v2, lambda a, b: h * b))
+    p2 = __sub(__add(radar.get_location(), __vector_scalar_op(vn, v1, lambda a, b: h * b)),  __vector_scalar_op(vn, v2, lambda a, b: h * b))
+    p3 = __sub(__sub(radar.get_location(), __vector_scalar_op(vn, v1, lambda a, b: h * b)),  __vector_scalar_op(vn, v2, lambda a, b: h * b))    
+    p4 = __add(__sub(radar.get_location(), __vector_scalar_op(vn, v1, lambda a, b: h * b)),  __vector_scalar_op(vn, v2, lambda a, b: h * b))
+
+    debug.draw_line(p1, get_point_at_general(p1, radar, 50), life_time=0.1)
+    debug.draw_line(p2, get_point_at_general(p2, radar, 50), life_time=0.1)
+    debug.draw_line(p3, get_point_at_general(p3, radar, 50), life_time=0.1)
+    debug.draw_line(p4, get_point_at_general(p4, radar, 50), life_time=0.1)
+
