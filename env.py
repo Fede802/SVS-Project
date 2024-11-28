@@ -3,6 +3,7 @@ import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 import carla
+import debug_utility
 
 #Template for enviroment
 class CarlaEnv(gym.Env):
@@ -84,8 +85,8 @@ class CarlaEnv(gym.Env):
         self.spawn_vehicles()
         
         radar_bp = self.blueprint_library.find('sensor.other.radar')
-        radar_bp.set_attribute('horizontal_fov', '30')
-        radar_bp.set_attribute('vertical_fov', '10')
+        radar_bp.set_attribute('horizontal_fov', '2')
+        radar_bp.set_attribute('vertical_fov', '2')
         radar_bp.set_attribute('range', '50')  # Maximum range of the radar
 
         self.radar_sensor = self.world.spawn_actor(
@@ -111,6 +112,7 @@ class CarlaEnv(gym.Env):
         velocities = []
 
         for detection in radar_data:
+            debug_utility.draw_radar_point(self.radar_sensor, detection)
             distances.append(detection.depth) #Distance to detect object
             velocities.append(detection.velocity) #Velocity of detect object
 
