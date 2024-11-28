@@ -133,8 +133,6 @@ class CarlaEnv(gym.Env):
         throttle = float(max(0.0, action[0]))
         brake = float(max(0.0, -action[0]))
 
-        print(f"Throttle: {throttle}, Brake: {brake}")
-
         #Apply action to throttle and brake
         control = carla.VehicleControl()
         control.throttle = throttle
@@ -146,6 +144,9 @@ class CarlaEnv(gym.Env):
         observation = self._get_observation()
         reward = self._compute_reward(observation, action)
         done = self._check_done(observation)
+        
+        
+        print(f"Throttle: {throttle}, Brake: {brake}, Reward: {reward}")
 
         return observation, reward, done, False, {}
     

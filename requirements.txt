@@ -2,5 +2,12 @@
 pygame==2.6.1
 numpy==1.21.6
 opencv-python==4.10.0.84
-gym==0.26.2
+open3d==0.17.0
+matplotlib==3.5.3
+bokeh==2.4.3
+pygal==2.4.0
+importlib-metadata==6.7.0
+lxml==5.3.0
+plotly==5.18.0
+dash==2.15.0gym==0.26.2
 stable-baselines3==1.7.0
