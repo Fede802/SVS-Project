@@ -168,35 +168,75 @@ class CarlaEnv(gym.Env):
         return np.array([distance, leader_speed, ego_speed, relative_speed], dtype=np.float32)
 
     def _compute_reward(self, observation, action):
+        """
+        Funzione di reward considerando la velocità target del leader.
+        """
+        # Osservazioni
         distance, leader_speed, ego_speed, relative_speed = observation
 
-        if 10.0 < distance < 30.0: 
-            distance_reward = 1.0
-        elif distance >= 30.0: 
-            distance_reward = -2.0
-        elif distance <= 5.0: 
-            distance_reward = -10.0
+        # Parametri
+        target_distance = max(5.0, ego_speed * 1.5)  # Distanza dinamica
+        relative_speed_tolerance = 1.0  # Velocità relativa accettabile
+        stopping_threshold = 0.1  # Soglia per considerare l'ego fermo
+
+        # 1. Comportamento in base alla velocità target
+        if self.TARGET_SPEED >= ego_speed:
+            # Adattamento alla velocità dell'ego se target_speed >= ego_speed
+            if abs(relative_speed) <= relative_speed_tolerance:
+                relative_speed_reward = 10.0  # Buon adattamento alla velocità
+            elif relative_speed > 0:  # Leader più lento dell'ego
+                relative_speed_reward = -1.0 * relative_speed
+            else:  # Leader più veloce dell'ego
+                relative_speed_reward = -2.0 * abs(relative_speed)
         else:
-            distance_reward = -1.0 
+            # Il leader non deve adattarsi completamente all'ego
+            if leader_speed > self.TARGET_SPEED:
+                relative_speed_reward = -1.0 * (leader_speed - self.TARGET_SPEED)  # Penalità per superamento velocità target
+            else:
+                relative_speed_reward = 0.5  # Premia il mantenimento della velocità target
 
+        # 2. Reward per mantenere la distanza sicura
+        if 0.8 * target_distance <= distance <= 1.2 * target_distance:  # Margine del 20%
+            distance_reward = 5.0
+        elif distance < 0.8 * target_distance:  # Troppo vicino
+            distance_reward = -5.0
+        elif distance > target_distance * 2:  # Troppo lontano
+            distance_reward = -5.0
+        else:
+            distance_reward = -1.0  # Margine subottimale
 
-        leader_stopped = leader_speed < 0.1
-        if leader_stopped and distance <= 5.0:
-            distance_reward -= 5.0
-        elif leader_stopped and distance >= 50.0:
-            distance_reward -= 5.0
-        elif leader_stopped and 10.0 < distance < 20.0:
-            distance_reward += 10.0
-        
-        # Speed reward
-        speed_reward = -abs(leader_speed - self.TARGET_SPEED) / self.TARGET_SPEED
-
-        # Action stability penalty (6)
-        action_penalty = -abs(action[0] - self.previous_action)
-
+        # 3. Comfort: Penalità per azioni brusche
+        action_penalty = -0.05 * abs(action[0] - self.previous_action)
+        comfort_penalty = -0.2 * (action[0] ** 2)
         self.previous_action = action[0]
 
-        return distance_reward + speed_reward + action_penalty
+        # 4. Frenata quando l'ego è fermo
+        stopping_penalty = 0.0
+        if ego_speed < stopping_threshold:  # L'ego è fermo
+            if leader_speed > 0.1:  # Il leader non sta frenando abbastanza
+                stopping_penalty = -2.0 * leader_speed  # Penalità proporzionale alla velocità
+            elif distance < 5.0:  # Leader troppo vicino all'ego fermo
+                stopping_penalty = -5.0
+
+        # 5. Incentivo per velocità costante vicino al target
+        steady_speed_reward = 0.0
+        if abs(leader_speed - self.TARGET_SPEED) < 2.0:
+            steady_speed_reward = 5.0  # Premia la stabilità
+
+        # Reward totale
+        total_reward = (
+            relative_speed_reward
+            + distance_reward
+            + action_penalty
+            + comfort_penalty
+            + stopping_penalty
+            + steady_speed_reward
+        )
+
+        return total_reward
+
+
+
 
     def _check_done(self, observation):
         distance, leader_speed, ego_speed, relative_speed = observation
@@ -206,6 +246,10 @@ class CarlaEnv(gym.Env):
         # Stop the simulation if the leader vehicle is too longer than 50 meters from the ego vehicle
         if distance >= 50.0 and leader_stopped:
             print("Leader vehicle is too longer than 50 meters from the ego vehicle.")
+            return True
+        
+        if leader_stopped:
+            print("Leader stop")
             return True
         
         if distance <= 5.0:
