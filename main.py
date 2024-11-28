@@ -30,9 +30,9 @@ def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
     for detection, i in zip(data, range(len(data))):
         #print(detection)
         absolute_speed = abs(detection.velocity)
-        #debug_utility.draw_radar_point(radar, detection)
         # Calculate TTC
-        if absolute_speed != 0:
+        if absolute_speed != 0 and debug_utility.evaluate_point(radar, detection):
+            #debug_utility.draw_radar_point(radar, detection)
             ttc = detection.depth / absolute_speed
             if ttc < min_ttc:
                 min_ttc = ttc
@@ -48,7 +48,7 @@ for v in world.get_actors().filter('vehicle.*'):
 #ego_vehicle = carla_utility.spawn_veichle_at(world=world, vehicle_index=15, spawn_point=carla.Transform(carla.Location(x=2.484849, y=-170.415253, z=2.900956)))
 ego_vehicle = carla_utility.spawn_veichle_bp_at(world=world, vehicle='vehicle.tesla.cybertruck', spawn_point=carla.Transform(carla.Location(x=380.786957, y=31.491543, z=13.309415), carla.Rotation(yaw = 180)))
 #other_vehicle = carla_utility.spawn_vehicle(world=world, transform=carla.Transform(carla.Location(x=50)))
-#other_vehicle = carla_utility.spawn_veichle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
+other_vehicle = carla_utility.spawn_veichle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
 
 radar = carla_utility.spawn_radar(world, ego_vehicle, range=54)
 radar.listen(lambda data: handle_measurement(data, radar))
@@ -110,8 +110,8 @@ def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
     return throttle, brake
 
 carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
-show_in_carla = True
-show_in_camera = False
+show_in_carla = False
+show_in_camera = True
 running = True
 cruise_control = True
 lastUpdate = 0
@@ -124,11 +124,12 @@ if show_in_camera:
 try:
     while running:
         control = carla.VehicleControl()
-        #other_vehicle.apply_control(carla.VehicleControl(throttle=0.5))
+        other_vehicle.apply_control(carla.VehicleControl(throttle=0.5))
+        print(spectator.get_location())
         #control.throttle = 1.0
 
         #debug_utility.draw_radar_bounding_box(radar)
-        #debug_utility.get_plane_base_vectors(radar)
+        debug_utility.get_plane_base_vectors(radar)
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.QUIT or event.key == pygame.K_ESCAPE:
