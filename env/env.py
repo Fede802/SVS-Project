@@ -174,7 +174,7 @@ class CarlaEnv(gym.Env):
         if leader_speed == self.MAX_RELATIVE_SPEED:
             if self.TARGET_SPEED - tolerance <= ego_speed <= self.TARGET_SPEED + tolerance: 
                 reward += 1
-            else: reward += -1
+            else: reward += -10
         else:
             if collision_time > 5.0 and absolute_speed - 1 < ego_speed < absolute_speed + 1:
                 reward += 1
@@ -184,21 +184,21 @@ class CarlaEnv(gym.Env):
                     if absolute_speed - tolerance < ego_speed < absolute_speed - tolerance:
                         reward += 5
                     else: 
-                        reward += -5
+                        reward += -10
                 #if object is detected and but collision time < 1.0
                 if collision_time < 1.0: #Collisione
                     reward += -100
         
         # Penality for oscillation
         if abs(self.previous_action - action[0]) > 0.70:
-            reward -= 5
+            reward -= -0.1 * abs(action[0])
         else:
-            reward += 5
+            reward += 1
         
         if abs(self.previous_action - action[1]) > 0.80:
-            reward -= 5
+            reward -= -0.2 * abs(action[1])
         else:
-            reward += 5
+            reward += 1
         
         return max(reward, -200) # Avoid large negative rewards
 
