@@ -72,7 +72,7 @@ class CarlaEnv(gym.Env):
         )
 
     
-    def reset(self, seed=None):
+    def reset(self, seed=1234):
         # Destroy existing actors
         if self.leader_vehicle is not None:
             self.leader_vehicle.destroy()
@@ -84,6 +84,7 @@ class CarlaEnv(gym.Env):
 
         self.spawn_vehicles()
         
+        #Add radar sensor
         radar_bp = self.blueprint_library.find('sensor.other.radar')
         radar_bp.set_attribute('horizontal_fov', '2')
         radar_bp.set_attribute('vertical_fov', '2')
@@ -95,7 +96,7 @@ class CarlaEnv(gym.Env):
             attach_to=self.leader_vehicle
         )
         self.radar_sensor.listen(self._radar_callback)
-
+        
         # Reset veichle state
         self.leader_vehicle.set_target_velocity(carla.Vector3D(self.TARGET_SPEED, 0, 0))
         self.ego_vehicle.set_target_velocity(carla.Vector3D(0, 0, 0))
@@ -128,6 +129,7 @@ class CarlaEnv(gym.Env):
                 "distance": 100.0,  # Assume max distance
                 "relative_speed": 0.0
             }
+    
 
     def step(self, action):
 
@@ -148,7 +150,7 @@ class CarlaEnv(gym.Env):
         done = self._check_done(observation)
         
         
-        print(f"Throttle: {throttle}, Brake: {brake}, Reward: {reward}")
+        print(f"Throttle: {throttle}, Brake: {brake}, Reward: {reward}, TTC: {self.ttc}, Safty Distance: {self.safety_distance}")
 
         return observation, reward, done, False, {}
     
@@ -167,77 +169,76 @@ class CarlaEnv(gym.Env):
             self.ego_vehicle.get_velocity().y,
             self.ego_vehicle.get_velocity().z
         ])
+        
+        #Compute collision time
+        if relative_speed > 0:
+            ttc = distance / relative_speed
+        else:
+            ttc = float('inf')
+        
+        #Compute safety distance
+        reaction_time = 0.5
+        deceleration = 9.8
+        safety_distance = leader_speed * reaction_time + (leader_speed ** 2) / (2 * deceleration)
+        
+        self.ttc = ttc
+        self.safety_distance = safety_distance
 
-        return np.array([distance, leader_speed, ego_speed, relative_speed], dtype=np.float32)
+        return np.array([distance, leader_speed, ego_speed, relative_speed, ttc, safety_distance], dtype=np.float32)
 
     def _compute_reward(self, observation, action):
-        """
-        Funzione di reward considerando la velocità target del leader.
-        """
-        # Osservazioni
-        distance, leader_speed, ego_speed, relative_speed = observation
+        
+        #Get observation
+        distance, leader_speed, ego_speed, relative_speed, ttc, safety_distance = observation
+        
+        #Collision
+        if distance <= 0.0:
+            return -100.0
 
-        # Parametri
-        target_distance = max(5.0, ego_speed * 1.5)  # Distanza dinamica
-        relative_speed_tolerance = 1.0  # Velocità relativa accettabile
-        stopping_threshold = 0.1  # Soglia per considerare l'ego fermo
-
-        # 1. Comportamento in base alla velocità target
-        if self.TARGET_SPEED >= ego_speed:
-            # Adattamento alla velocità dell'ego se target_speed >= ego_speed
-            if abs(relative_speed) <= relative_speed_tolerance:
-                relative_speed_reward = 10.0  # Buon adattamento alla velocità
-            elif relative_speed > 0:  # Leader più lento dell'ego
-                relative_speed_reward = -1.0 * relative_speed
-            else:  # Leader più veloce dell'ego
-                relative_speed_reward = -2.0 * abs(relative_speed)
+        #Time to collision
+        if ttc < 1.0:
+            return -50.0
+        
+        #No safety distance
+        if distance < safety_distance:
+            distance_penalty = -10.0 * (safety_distance - distance) / safety_distance
         else:
-            # Il leader non deve adattarsi completamente all'ego
-            if leader_speed > self.TARGET_SPEED:
-                relative_speed_reward = -1.0 * (leader_speed - self.TARGET_SPEED)  # Penalità per superamento velocità target
-            else:
-                relative_speed_reward = 0.5  # Premia il mantenimento della velocità target
-
-        # 2. Reward per mantenere la distanza sicura
-        if 0.8 * target_distance <= distance <= 1.2 * target_distance:  # Margine del 20%
-            distance_reward = 5.0
-        elif distance < 0.8 * target_distance:  # Troppo vicino
-            distance_reward = -5.0
-        elif distance > target_distance * 2:  # Troppo lontano
-            distance_reward = -5.0
+            distance_penalty = 0
+        
+        #Correct safety distance
+        safety_margin = 2.0 #In meter
+        if safety_distance - safety_margin <= distance <= safety_distance + safety_margin:
+            safety_reward = 10.0
         else:
-            distance_reward = -1.0  # Margine subottimale
-
-        # 3. Comfort: Penalità per azioni brusche
-        action_penalty = -0.05 * abs(action[0] - self.previous_action)
-        comfort_penalty = -0.2 * (action[0] ** 2)
+            safety_reward = 0.0
+            
+        #Penality for non-linear throttle/breake
+        oscillation_penalty = -0.1 * abs(action[0] - self.previous_action)
         self.previous_action = action[0]
-
-        # 4. Frenata quando l'ego è fermo
-        stopping_penalty = 0.0
-        if ego_speed < stopping_threshold:  # L'ego è fermo
-            if leader_speed > 0.1:  # Il leader non sta frenando abbastanza
-                stopping_penalty = -2.0 * leader_speed  # Penalità proporzionale alla velocità
-            elif distance < 5.0:  # Leader troppo vicino all'ego fermo
-                stopping_penalty = -5.0
-
-        # 5. Incentivo per velocità costante vicino al target
-        steady_speed_reward = 0.0
-        if abs(leader_speed - self.TARGET_SPEED) < 2.0:
-            steady_speed_reward = 5.0  # Premia la stabilità
-
-        # Reward totale
-        total_reward = (
-            relative_speed_reward
-            + distance_reward
-            + action_penalty
-            + comfort_penalty
-            + stopping_penalty
-            + steady_speed_reward
+        
+        #Correct mantaining target velocity
+        if ego_speed == 0:
+            speed_reward = 0
+        else:
+            speed_dif = abs(ego_speed - self.TARGET_SPEED)
+            speed_reward = -speed_dif / self.TARGET_SPEED * 10.0  # Penalità proporzionale alla deviazione dalla velocità target
+        
+        #Strong breake or Strong throttle
+        throttle_penalty = -0.1 * max(0, action[0])  # Penalità per throttle aggressivo
+        brake_penalty = -0.2 * max(0, -action[0])  # Penalità per frenate brusche
+        
+        # Somma delle componenti del reward
+        reward = (
+            distance_penalty
+            + safety_reward
+            + oscillation_penalty
+            + speed_reward
+            + throttle_penalty
+            + brake_penalty
         )
 
-        return total_reward
-
+        # Aggiungi un minimo reward positivo per stimolare il progresso
+        reward = max(reward, -100.0)  # Impedisci punteggi estremamente negativi
 
 
 
@@ -255,8 +256,8 @@ class CarlaEnv(gym.Env):
             print("Leader stop")
             return True
         
-        if distance <= 5.0:
-            print("Collision detected.")
+        if self.ttc < 1.0:
+            print("Critical TTC detected. Ending simulation.")
             return True
         
         return False
