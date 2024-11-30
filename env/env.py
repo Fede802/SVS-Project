@@ -27,8 +27,8 @@ class CarlaEnv(gym.Env):
 
         #Define the observation space
         self.observation_space = spaces.Box(
-            low=np.array([0.0, 0.0, 0.0]), # [min(distance), min(ego_speed), min(leader_speed)] in m/s
-            high=np.array([100.0, 30.0, self.MAX_RELATIVE_SPEED]), # [max(distance, max(ego_speed), max(leader_speed)] in m/s
+            low=np.array([0.0, 0.0, 0.0]), # [min(distance), min(ego_speed), min(relative_speed)] in m/s
+            high=np.array([100.0, 30.0, self.MAX_RELATIVE_SPEED]), # [max(distance, max(ego_speed), max(relative_speed)] in m/s
             dtype=np.float32
         )
 
@@ -55,13 +55,16 @@ class CarlaEnv(gym.Env):
 
         # Spawn point ego vehicle at random position
         safe_distance = (self.TARGET_SPEED / 10)**2 # To avoid collisions
-        random_distance = rnd.uniform(safe_distance + 1, 100.0)
+        random_distance = rnd.uniform(safe_distance + 5, 100.0)
 
         ego_vehicle = carla.Location(
             x = spawn_point_leader.location.x - random_distance,
             y = spawn_point_leader.location.y,
             z = spawn_point_leader.location.z
         )
+
+        print("Ego spawned at")
+        print(f"x: {ego_vehicle.x}, y: {ego_vehicle.y}, z: {ego_vehicle.z}")
 
         ego_rotation = spawn_point_leader.rotation
 
@@ -71,6 +74,7 @@ class CarlaEnv(gym.Env):
 
     
     def reset(self, seed=42):
+        print("----RESET----")
         # Destroy existing actors
         if self.leader_vehicle is not None:
             self.leader_vehicle.destroy()
@@ -99,9 +103,9 @@ class CarlaEnv(gym.Env):
         self.radar_sensor.listen(self._radar_callback)
 
         # Reset veichle state
-        random_velocity = rnd.uniform(2.7778, self.TARGET_SPEED + 1) # ~ min: 10km/h max: 60km/h 
+        random_velocity = rnd.uniform(2.7778, self.TARGET_SPEED + 1) # ~ min: 10km/h max: 60km/h
         self.ego_vehicle.set_target_velocity(carla.Vector3D(random_velocity, 0, 0))
-        self.leader_vehicle.set_target_velocity(carla.Vector3D(0, 0, 0))
+        self.leader_vehicle.set_target_velocity(carla.Vector3D(random_velocity, 0, 0))
         
         # Wait for simulation to progress
         self.world.tick()
@@ -122,10 +126,12 @@ class CarlaEnv(gym.Env):
         if distances:
             self.radar_data["distance"] = min(distances)
             self.radar_data["relative_speed"] = velocities[np.argmin(distances)]
+            print(f"Detected: {self.radar_data['distance']} m, Relative Speed: {self.radar_data['relative_speed']} m/s")
         else:
             # No object detected, set default values
             self.radar_data["distance"] = 50
             self.radar_data["relative_speed"] = self.MAX_RELATIVE_SPEED
+            print("No detected object")
 
     def step(self, action):
 
@@ -144,8 +150,6 @@ class CarlaEnv(gym.Env):
         reward = self._compute_reward(observation, action)
         done = self._check_done(observation)
 
-        print(f"Throttle: {throttle}, Brake: {brake}, Reward: {reward}")
-
         return observation, reward, done, False, {}
     
     def _get_observation(self):
@@ -158,45 +162,54 @@ class CarlaEnv(gym.Env):
             self.ego_vehicle.get_velocity().z
         ])
 
+        print(f"Current ego speed: {ego_speed} m/s, Distance: {distance} m, Relative Speed: {relative_speed} m/s")
         return np.array([abs(distance), abs(ego_speed), abs(relative_speed)], dtype=np.float32)
 
     def _compute_reward(self, observation, action):
-        distance, ego_speed, leader_speed = observation # Leader speed is relative to ego vehicle
+        distance, ego_speed, relative_speed = observation # Leader speed is relative to ego vehicle
 
         tolerance = 1.0
-        absolute_speed = ego_speed + leader_speed
-        collision_time = distance / leader_speed
+        absolute_speed = ego_speed + relative_speed
+        collision_time = distance / max(relative_speed, 0.1) # No zero velocity
+        no_detected_object = relative_speed == self.MAX_RELATIVE_SPEED
+        mantain_target_speed = abs(self.TARGET_SPEED - tolerance) <= ego_speed <= abs(self.TARGET_SPEED + tolerance)
+        mantain_relative_speed = abs(absolute_speed) < ego_speed < abs(absolute_speed)
+        large_collision_time = collision_time > 5.0
+        good_collision_time = 2.4 <= collision_time <= 4.0
+        bad_collision_time = collision_time < 1.0
+        have_strong_breake = abs(self.previous_action - action[1]) > 0.80
+        have_strong_throttle = abs(self.previous_action - action[0]) > 0.70
 
         # Reward
-        reward = 0
+        reward = 0.0
 
         #if no object detected mantain TARGET SPEED
-        if leader_speed == self.MAX_RELATIVE_SPEED:
-            if self.TARGET_SPEED - tolerance <= ego_speed <= self.TARGET_SPEED + tolerance: 
+        if no_detected_object:
+            if mantain_target_speed: 
                 reward += 1
-            else: reward += -10
+            else: reward += -100 * abs(self.TARGET_SPEED - ego_speed)
         else:
-            if collision_time > 5.0 and absolute_speed - 1 < ego_speed < absolute_speed + 1:
+            if large_collision_time:
                 reward += 1
             else:
                 #if object is detected and 2.4 <= collision time <= 5.0  and absolute speed - 1 < ego speed < absolute speed - 1
-                if 2.4 <= collision_time <= 5.0:
-                    if absolute_speed - tolerance < ego_speed < absolute_speed - tolerance:
-                        reward += 5
+                if good_collision_time:
+                    if mantain_relative_speed:
+                        reward += 5 + abs(ego_speed)
                     else: 
-                        reward += -10
+                        reward += -10 + abs(relative_speed)
                 #if object is detected and but collision time < 1.0
-                if collision_time < 1.0: #Collisione
+                if bad_collision_time:
                     reward += -100
         
         # Penality for oscillation
-        if abs(self.previous_action - action[0]) > 0.70:
-            reward -= -0.1 * abs(action[0])
+        if have_strong_throttle:
+            reward -= 1 + abs(action[0])
         else:
             reward += 1
         
-        if abs(self.previous_action - action[1]) > 0.80:
-            reward -= -0.2 * abs(action[1])
+        if have_strong_breake:
+            reward -= 2 + abs(action[1])
         else:
             reward += 1
         
@@ -205,21 +218,15 @@ class CarlaEnv(gym.Env):
 
 
     def _check_done(self, observation):
-        distance, ego_speed, leader_speed = observation
-
-        safe_distance = (self.TARGET_SPEED / 10)**2 # To avoid collisions
-        collision_time = distance / leader_speed
+        distance, ego_speed, relative_speed = observation
+        collision_time = distance / max(relative_speed, 1) # No zero velocity
         ego_stopped = abs(ego_speed) < 0.1
-
-        if distance >= safe_distance and ego_stopped:
-            print("Ego vehicle is too longer than safe distance meters from the ego vehicle.")
-            return True
 
         if ego_stopped:
             print("Ego vehicle has stopped.")
             return True
         
-        if collision_time < 1.0:
+        if collision_time < 1.0 and relative_speed != self.MAX_RELATIVE_SPEED:
             print("Collision time detected.")
             return True
         
