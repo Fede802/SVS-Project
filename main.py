@@ -4,7 +4,7 @@ from matplotlib import cm
 import numpy as np
 import debug_utility
 import carla_utility
-import plot_utility
+
 
 client = carla.Client('localhost', 2000)
 print(client.get_available_maps())
