@@ -18,7 +18,7 @@ spectator = world.get_spectator()
 
 
 
-target_velocity = 70
+target_velocity = 50
 
 #TTC = (distance / relative_velocity) if relative_velocity != 0 else 9999
 # Simple callback function to print the number of detections
@@ -32,8 +32,10 @@ def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
         absolute_speed = abs(detection.velocity)
         #debug_utility.draw_radar_point(radar, detection, color = carla.Color(255, 0, 255))
         # Calculate TTC
-        if absolute_speed != 0 and debug_utility.evaluate_point(radar, tadsjads(detection)):
+        if round(absolute_speed) != 0 and debug_utility.evaluate_point(radar, tadsjads(detection)):
             debug_utility.draw_radar_point(radar, tadsjads(detection))
+            print(detection)
+            #time.sleep(5)
             ttc = detection.depth / absolute_speed
             if ttc < min_ttc:
                 min_ttc = ttc
@@ -51,7 +53,7 @@ ego_vehicle = carla_utility.spawn_veichle_bp_at(world=world, vehicle='vehicle.te
 #other_vehicle = carla_utility.spawn_vehicle(world=world, transform=carla.Transform(carla.Location(x=50)))
 other_vehicle = carla_utility.spawn_veichle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
 
-radar = carla_utility.spawn_radar(world, ego_vehicle, range=54)
+radar = carla_utility.spawn_radar(world, ego_vehicle, range=70)
 radar.listen(lambda data: handle_measurement(data, radar))
 
 video_output = np.zeros((600, 800, 4), dtype=np.uint8)
@@ -85,7 +87,7 @@ def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
     # Inizializza throttle e brake
     throttle = 0.0
     brake = 0.0
-    
+    #print(min_ttc)
     if min_ttc > 0 and min_ttc < float('inf'):
         #print(min_ttc)
         brake = 1.0
@@ -110,7 +112,7 @@ def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
     
     return throttle, brake
 
-#carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
+carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
 show_in_carla = False
 show_in_camera = True
 running = True
@@ -125,8 +127,8 @@ if show_in_camera:
 try:
     while running:
         control = carla.VehicleControl()
-        other_vehicle.apply_control(carla.VehicleControl(throttle=0.5))
-        print(spectator.get_location())
+        other_vehicle.apply_control(carla.VehicleControl(throttle=0.3))
+        #print(spectator.get_location())
         #control.throttle = 1.0
 
         debug_utility.draw_radar_bounding_box(radar)
@@ -154,6 +156,7 @@ try:
         if cruise_control:              
             throttle, brake = compute_controls(ego_vehicle.get_velocity().length(), target_velocity, min_ttc)
             control = carla.VehicleControl(throttle=throttle, brake=brake)
+            #print(control)
         ego_vehicle.apply_control(control)
         
 
