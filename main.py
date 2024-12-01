@@ -2,8 +2,10 @@ import carla, time, pygame, cv2, debug_utility, carla_utility
 import numpy as np
 from server import start_servers, send_data, close_servers
 
+send_info = False
 client = carla.Client('localhost', 2000)
-start_servers()
+if send_info:
+    start_servers()
 print(client.get_available_maps())
 #3 bella dritta, 4 anche meglio
 client.load_world('Town04')
@@ -119,7 +121,8 @@ try:
         pygame.display.flip()
        
         if(time.time() - lastUpdate > 0.2):
-            send_data({"velocity": ego_vehicle.get_velocity().length(), "acceleration": ego_vehicle.get_acceleration().length()})
+            if send_info:
+                send_data({"velocity": ego_vehicle.get_velocity().length(), "acceleration": ego_vehicle.get_acceleration().length()})
             lastUpdate = time.time()
         world.tick()
 except KeyboardInterrupt:
@@ -127,5 +130,6 @@ except KeyboardInterrupt:
 finally:
     pygame.quit()
     cv2.destroyAllWindows()  
-    carla_utility.destroy_all_vehicle_and_sensors(world)   
-    close_servers()
+    carla_utility.destroy_all_vehicle_and_sensors(world)  
+    if send_info: 
+        close_servers()
