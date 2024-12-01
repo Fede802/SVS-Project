@@ -31,13 +31,15 @@ def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
         absolute_speed = abs(detection.velocity)
         #debug_utility.draw_radar_point(radar, detection, color = carla.Color(255, 0, 255))
         # Calculate TTC
-        if absolute_speed != 0 and debug_utility.evaluate_point(radar, detection, 1, 1):
+        if debug_utility.evaluate_point(radar, detection, 1, 1):
             debug_utility.draw_radar_point(radar, detection)
-            #print(detection)
-            #time.sleep(5)
-            ttc = detection.depth / absolute_speed
-            if ttc < min_ttc:
-                min_ttc = ttc
+            if absolute_speed != 0:
+                
+                #print(detection)
+                #time.sleep(5)
+                ttc = detection.depth / absolute_speed
+                if ttc < min_ttc:
+                    min_ttc = ttc
 
 pygame.init()
 pygame.display.set_mode((400, 300))
@@ -50,7 +52,7 @@ for v in world.get_actors().filter('vehicle.*'):
 #ego_vehicle = carla_utility.spawn_veichle_at(world=world, vehicle_index=15, spawn_point=carla.Transform(carla.Location(x=2.484849, y=-170.415253, z=2.900956)))
 ego_vehicle = carla_utility.spawn_veichle_bp_at(world=world, vehicle='vehicle.tesla.cybertruck', spawn_point=carla.Transform(carla.Location(x=380.786957, y=31.491543, z=13.309415), carla.Rotation(yaw = 180)))
 #other_vehicle = carla_utility.spawn_vehicle(world=world, transform=carla.Transform(carla.Location(x=50)))
-other_vehicle = carla_utility.spawn_veichle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
+other_vehicle = carla_utility.spawn_veichle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=40)
 
 radar = carla_utility.spawn_radar(world, ego_vehicle, range=70)
 radar.listen(lambda data: handle_measurement(data, radar))
@@ -115,7 +117,7 @@ carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
 show_in_carla = False
 show_in_camera = True
 running = True
-cruise_control = True
+cruise_control = False
 lastUpdate = 0
 
 if show_in_camera:
@@ -126,7 +128,7 @@ if show_in_camera:
 try:
     while running:
         control = carla.VehicleControl()
-        other_vehicle.apply_control(carla.VehicleControl(throttle=0.3))
+        other_vehicle.apply_control(carla.VehicleControl(brake=1.0))
         #print(spectator.get_location())
         #control.throttle = 1.0
 
