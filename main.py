@@ -23,16 +23,17 @@ target_velocity = 70
 #TTC = (distance / relative_velocity) if relative_velocity != 0 else 9999
 # Simple callback function to print the number of detections
 min_ttc = float('inf')
+def tadsjads(sdaas) -> carla.RadarDetection:
+    return sdaas
 def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
     global min_ttc, min_distance
     min_ttc = float('inf')
-    
     for detection, i in zip(data, range(len(data))):
-        #print(detection)
         absolute_speed = abs(detection.velocity)
+        #debug_utility.draw_radar_point(radar, detection, color = carla.Color(255, 0, 255))
         # Calculate TTC
-        if absolute_speed != 0 and debug_utility.evaluate_point(radar, detection):
-            #debug_utility.draw_radar_point(radar, detection)
+        if absolute_speed != 0 and debug_utility.evaluate_point(radar, tadsjads(detection)):
+            debug_utility.draw_radar_point(radar, tadsjads(detection))
             ttc = detection.depth / absolute_speed
             if ttc < min_ttc:
                 min_ttc = ttc
@@ -109,7 +110,7 @@ def compute_controls(velocita_corrente, velocita_target, ttc, k_p=0.05):
     
     return throttle, brake
 
-carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
+#carla_utility.move_spectator_to(world, spectator, ego_vehicle.get_transform())
 show_in_carla = False
 show_in_camera = True
 running = True
@@ -128,7 +129,7 @@ try:
         print(spectator.get_location())
         #control.throttle = 1.0
 
-        #debug_utility.draw_radar_bounding_box(radar)
+        debug_utility.draw_radar_bounding_box(radar)
         debug_utility.get_plane_base_vectors(radar)
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
