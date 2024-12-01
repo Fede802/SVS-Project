@@ -44,7 +44,7 @@ def spawn_veichle_in_front_of(world, veichle, vehicle_index=0, offset=0):
     return spawn_veichle_at(world,vehicle_index,spawn_point=carla.Transform(carla.Location(v3d.x, v3d.y, v3d.z + 10), veichle.get_transform().rotation))
 
 def spawn_veichle_bp_in_front_of(world, veichle, vehicle_bp_name, offset=0):
-    v3d = debug_utility.get_point_at(veichle, offset)
+    v3d = debug_utility.get_point_at(veichle, veichle.get_location(), offset)
     return spawn_veichle_bp_at(world,vehicle_bp_name,spawn_point=carla.Transform(carla.Location(v3d.x, v3d.y, v3d.z + 10), veichle.get_transform().rotation))
 
 def spawn_vehicle(world, vehicle_index=0, spawn_index=0, pattern='vehicle.*', transform = carla.Transform()):

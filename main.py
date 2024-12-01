@@ -23,8 +23,7 @@ target_velocity = 50
 #TTC = (distance / relative_velocity) if relative_velocity != 0 else 9999
 # Simple callback function to print the number of detections
 min_ttc = float('inf')
-def tadsjads(sdaas) -> carla.RadarDetection:
-    return sdaas
+
 def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
     global min_ttc, min_distance
     min_ttc = float('inf')
@@ -32,9 +31,9 @@ def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
         absolute_speed = abs(detection.velocity)
         #debug_utility.draw_radar_point(radar, detection, color = carla.Color(255, 0, 255))
         # Calculate TTC
-        if round(absolute_speed) != 0 and debug_utility.evaluate_point(radar, tadsjads(detection)):
-            debug_utility.draw_radar_point(radar, tadsjads(detection))
-            print(detection)
+        if absolute_speed != 0 and debug_utility.evaluate_point(radar, detection, 1, 1):
+            debug_utility.draw_radar_point(radar, detection)
+            #print(detection)
             #time.sleep(5)
             ttc = detection.depth / absolute_speed
             if ttc < min_ttc:
@@ -131,8 +130,8 @@ try:
         #print(spectator.get_location())
         #control.throttle = 1.0
 
-        debug_utility.draw_radar_bounding_box(radar)
-        debug_utility.get_plane_base_vectors(radar)
+        debug_utility.draw_radar_bounding_range(radar)
+        debug_utility.draw_radar_point_cloud_range(radar, 1, 1)
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.QUIT or event.key == pygame.K_ESCAPE:
