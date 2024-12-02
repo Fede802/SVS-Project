@@ -2,7 +2,7 @@ import carla, time, pygame, cv2, debug_utility, carla_utility
 import numpy as np
 from server import start_servers, send_data, close_servers
 
-send_info = False
+send_info = True
 client = carla.Client('localhost', 2000)
 if send_info:
     start_servers()
@@ -20,6 +20,7 @@ radar_detection_h_radius = 1
 radar_detection_v_radius = 1.3
 target_velocity = 70
 min_permitted_distance = 50
+medium_permitted_distance = 100
 
 def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
     global min_ttc, min_depth
@@ -51,6 +52,7 @@ def camera_callback(image):
     video_output = np.reshape(np.copy(image.raw_data), (image.height, image.width, 4))
 
 def compute_controls(velocita_corrente, velocita_target):
+    # se maggiore di 0 allora devo accellerare
     errore_vel = velocita_target - (velocita_corrente * 3.6)
     errore_vel_perc = abs(errore_vel) * 100 / velocita_target
     
@@ -58,11 +60,14 @@ def compute_controls(velocita_corrente, velocita_target):
     brake = 0.0
     
     if min_depth < min_permitted_distance or (min_ttc > 0 and min_ttc < float('inf')):
+        print("Too close, Emergency Brake!")
         brake = 1.0
     else:    
         if errore_vel > 0:
+            print("Ok we can throttle to reach target velocity")
             throttle = 1.0 * errore_vel_perc
         else:
+            print("Little brake to mantein target velocity")
             brake = 1.0 * errore_vel_perc
 
     return throttle, brake
