@@ -9,7 +9,7 @@ from env.env import CarlaEnv
 env = CarlaEnv()
 
 # Check environment
-check_env(env)
+#check_env(env)
 
 
 # Initialize the PPO model

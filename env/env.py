@@ -22,13 +22,14 @@ class CarlaEnv(gym.Env):
         #Define the action for ego vehicle [throttle, break]
         self.action_space = spaces.Box(
             low=np.array([0.0, 0.0]), # [min(throttle), min(break)]
-            high=np.array([1.0, 1.0]) # [max(throttle), max(break)]
+            high=np.array([1.0, 1.0]), # [max(throttle), max(break)]
+            dtype=np.float32
         )
 
         #Define the observation space
         self.observation_space = spaces.Box(
-            low=np.array([0.0, 0.0, 0.0]), # [min(distance), min(ego_speed), min(relative_speed)] in m/s
-            high=np.array([100.0, 30.0, self.MAX_RELATIVE_SPEED]), # [max(distance, max(ego_speed), max(relative_speed)] in m/s
+            low=np.array([0.0, 0.0, -30.0]), # [min(distance), min(ego_speed), min(relative_speed)] in m/s
+            high=np.array([250, 30.0, 30.0]), # [max(distance, max(ego_speed), max(relative_speed)] in m/s
             dtype=np.float32
         )
 
@@ -42,8 +43,8 @@ class CarlaEnv(gym.Env):
         self.radar_sensor = None
 
         self.radar_data = {  # Default radar data
-            "distance": 50,  # Default distance if no object is detected
-            "relative_speed": self.MAX_RELATIVE_SPEED  # Default relative speed
+            "distance": np.nan,  # Default distance if no object is detected
+            "relative_speed": np.nan  # Default relative speed
         }
 
         #For oscillation
@@ -91,7 +92,7 @@ class CarlaEnv(gym.Env):
         radar_bp = self.blueprint_library.find('sensor.other.radar')
         radar_bp.set_attribute('horizontal_fov', '2')
         radar_bp.set_attribute('vertical_fov', '2')
-        radar_bp.set_attribute('range', '50')  # Maximum range of the radar
+        radar_bp.set_attribute('range', '250')  # Maximum range of the radar
 
         self.radar_sensor = self.world.spawn_actor(
             radar_bp,
@@ -128,11 +129,10 @@ class CarlaEnv(gym.Env):
             self.radar_data["relative_speed"] = velocities[np.argmin(distances)]
             print(f"Detected: {self.radar_data['distance']} m, Relative Speed: {self.radar_data['relative_speed']} m/s")
         else:
-            # No object detected, set default values
-            self.radar_data["distance"] = 50
-            self.radar_data["relative_speed"] = self.MAX_RELATIVE_SPEED
-            print("No detected object")
-
+            self.radar_data["distance"] = np.nan
+            self.radar_data["relative_speed"] = np.nan
+            print(f"Detected: {self.radar_data['distance']} m, Relative Speed: {self.radar_data['relative_speed']} m/s")
+        
     def step(self, action):
 
         throttle = float(max(0.0, action[0]))
@@ -145,7 +145,7 @@ class CarlaEnv(gym.Env):
         self.ego_vehicle.apply_control(control)
 
         self.world.tick()
-
+                
         observation = self._get_observation()
         reward = self._compute_reward(observation, action)
         done = self._check_done(observation)
@@ -153,8 +153,17 @@ class CarlaEnv(gym.Env):
         return observation, reward, done, False, {}
     
     def _get_observation(self):
-        distance = self.radar_data["distance"]
-        relative_speed = self.radar_data["relative_speed"]
+        
+        if self.radar_data["distance"] != np.nan:
+            distance = abs(self.radar_data["distance"])
+        else:
+            distance = np.nan
+        
+        if self.radar_data["relative_speed"] != np.nan:
+            relative_speed = self.radar_data["relative_speed"]
+        else:
+            relative_speed = np.nan
+        
 
         ego_speed = np.linalg.norm([
             self.ego_vehicle.get_velocity().x,
@@ -163,7 +172,7 @@ class CarlaEnv(gym.Env):
         ])
 
         print(f"Current ego speed: {ego_speed} m/s, Distance: {distance} m, Relative Speed: {relative_speed} m/s")
-        return np.array([abs(distance), abs(ego_speed), abs(relative_speed)], dtype=np.float32)
+        return np.array([distance, abs(ego_speed), relative_speed], dtype=np.float32)
 
     def _compute_reward(self, observation, action):
         distance, ego_speed, relative_speed = observation # Leader speed is relative to ego vehicle
@@ -187,7 +196,7 @@ class CarlaEnv(gym.Env):
         if no_detected_object:
             if mantain_target_speed: 
                 reward += 1
-            else: reward += -100 * abs(self.TARGET_SPEED - ego_speed)
+            else: reward -= 100 * abs(self.TARGET_SPEED - ego_speed)
         else:
             if large_collision_time:
                 reward += 1
