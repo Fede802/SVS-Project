@@ -19,8 +19,8 @@ carla_utility.destroy_all_vehicle_and_sensors(world) #to avoid spawning bugs
 radar_detection_h_radius = 1
 radar_detection_v_radius = 1.3
 target_velocity = 70
-min_permitted_distance = 50
-medium_permitted_distance = 100
+min_permitted_distance = 30
+medium_permitted_distance = 50
 
 def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
     global min_ttc, min_depth
@@ -33,7 +33,7 @@ def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
                 ttc = detection.depth / absolute_speed
                 if ttc < min_ttc:
                     min_ttc = ttc
-            elif detection.depth < min_permitted_distance:
+            if detection.depth < min_permitted_distance:
                 if detection.depth < min_depth:
                     min_depth = detection.depth
 
@@ -41,9 +41,9 @@ pygame.init()
 pygame.display.set_mode((400, 300))
 
 ego_vehicle = carla_utility.spawn_vehicle_bp_at(world=world, vehicle='vehicle.tesla.cybertruck', spawn_point=carla.Transform(carla.Location(x=380.786957, y=31.491543, z=13.309415), carla.Rotation(yaw = 180)))
-other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=40)
+other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
 
-radar = carla_utility.spawn_radar(world, ego_vehicle, range=70)
+radar = carla_utility.spawn_radar(world, ego_vehicle, range=100)
 radar.listen(lambda data: handle_measurement(data, radar))
 
 video_output = np.zeros((600, 800, 4), dtype=np.uint8)
@@ -58,25 +58,24 @@ def compute_controls(velocita_corrente, velocita_target):
     
     throttle = 0.0
     brake = 0.0
-    
-    if min_depth < min_permitted_distance:
-        print("Too close, Emergency Brake!")
-        brake = 1.0
-    else:
-        if min_depth < medium_permitted_distance:
-            print("We are getting closer, little Brake!")
-            brake = 0.5
+    #print(min_depth)
+    if min_depth < medium_permitted_distance:
+        print("We are getting closer, little Brake!")
+        brake = 0.5
+    elif min_depth < min_permitted_distance:
+        #print("Too close, Emergency Brake!")
+            brake = 1.0
 
     # if min_depth < min_permitted_distance or (min_ttc > 0 and min_ttc < float('inf')):
     #     print("Too close, Emergency Brake!")
     #     brake = 1.0
-        else:    
-            if errore_vel > 0:
-                print("Ok we can throttle to reach target velocity")
-                throttle = 1.0 * errore_vel_perc
-            else:
-                print("Little brake to mantein target velocity")
-                brake = 1.0 * errore_vel_perc
+    else:    
+        if errore_vel > 0:
+            #print("Ok we can throttle to reach target velocity")
+            throttle = 1.0 * errore_vel_perc
+        else:
+            #print("Little brake to mantein target velocity")
+            brake = 1.0 * errore_vel_perc
 
     return throttle, brake
 
