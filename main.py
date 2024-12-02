@@ -59,16 +59,24 @@ def compute_controls(velocita_corrente, velocita_target):
     throttle = 0.0
     brake = 0.0
     
-    if min_depth < min_permitted_distance or (min_ttc > 0 and min_ttc < float('inf')):
+    if min_depth < min_permitted_distance:
         print("Too close, Emergency Brake!")
         brake = 1.0
-    else:    
-        if errore_vel > 0:
-            print("Ok we can throttle to reach target velocity")
-            throttle = 1.0 * errore_vel_perc
-        else:
-            print("Little brake to mantein target velocity")
-            brake = 1.0 * errore_vel_perc
+    else:
+        if min_depth < medium_permitted_distance:
+            print("We are getting closer, little Brake!")
+            brake = 0.5
+
+    # if min_depth < min_permitted_distance or (min_ttc > 0 and min_ttc < float('inf')):
+    #     print("Too close, Emergency Brake!")
+    #     brake = 1.0
+        else:    
+            if errore_vel > 0:
+                print("Ok we can throttle to reach target velocity")
+                throttle = 1.0 * errore_vel_perc
+            else:
+                print("Little brake to mantein target velocity")
+                brake = 1.0 * errore_vel_perc
 
     return throttle, brake
 
