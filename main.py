@@ -2,6 +2,9 @@ import carla, time, pygame, cv2, debug_utility, carla_utility
 import numpy as np
 from server import start_servers, send_data, close_servers
 from collections import deque
+from acc_planner import AccPlanner
+from final_planner import Planner
+
 
 send_info = True
 show_in_carla = False
@@ -14,7 +17,7 @@ update_frequency = 0.2 #seconds
 radar_detection_h_radius = 1
 radar_detection_v_radius = 1.3
 target_velocity = 130
-min_permitted_distance = 50
+min_permitted_distance = 100
 
 client = carla.Client('localhost', 2000)
 client.set_timeout(100.0)
@@ -43,7 +46,7 @@ def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
                 ttc = detection.depth / absolute_speed
                 if ttc < min_ttc:
                     min_ttc = ttc
-            elif detection.depth < min_permitted_distance:
+            if detection.depth < min_permitted_distance:
                 if detection.depth < min_depth:
                     min_depth = detection.depth
 
@@ -51,7 +54,8 @@ pygame.init()
 pygame.display.set_mode((400, 300))
 
 ego_vehicle = carla_utility.spawn_vehicle_bp_at(world=world, vehicle='vehicle.tesla.cybertruck', spawn_point=carla.Transform(carla.Location(x=380.786957, y=31.491543, z=13.309415), carla.Rotation(yaw = 180)))
-# other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=40)
+other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=150)
+planner = Planner(ego_vehicle)
 
 radar = carla_utility.spawn_radar(world, ego_vehicle, range=70)
 radar.listen(lambda data: handle_measurement(data, radar))
@@ -78,12 +82,12 @@ def compute_controls(velocita_corrente, velocita_target):
 
     return throttle, brake
 
-e_buffer = deque(maxlen=30)
-K_P=1.1
-K_D=0.002
-K_I=1.0
-dt=0.03
-def compute_pid_control(current_speed):
+e_buffer_speed = deque(maxlen=30)
+K_P_speed=1.1
+K_D_speed=0.002
+K_I_speed=1.0
+dt_speed=0.03
+def compute_pid_control_speed(current_speed):
         """
         Estimate the throttle of the vehicle based on the PID equations
 
@@ -91,17 +95,36 @@ def compute_pid_control(current_speed):
         :param current_speed: current speed of the vehicle in Km/h
         :return: throttle control in the range [0, 1]
         """
-        _e = (target_velocity - current_speed)
-        e_buffer.append(_e)
+        e = (target_velocity - current_speed)
+        e_buffer_speed.append(e)
 
-        if len(e_buffer) >= 2:
-            _de = (e_buffer[-1] - e_buffer[-2]) / dt
-            _ie = sum(e_buffer) * dt
+        if len(e_buffer_speed) >= 2:
+            de = (e_buffer_speed[-1] - e_buffer_speed[-2]) / dt_speed
+            ie = sum(e_buffer_speed) * dt_speed
         else:
-            _de = 0.0
-            _ie = 0.0
+            de = 0.0
+            ie = 0.0
 
-        return np.clip((K_P * _e) + (K_D * _de / dt) + (K_I * _ie * dt), 0.0, 1.0)
+        return np.clip((K_P_speed * e) + (K_D_speed * de / dt_speed) + (K_I_speed * ie * dt_speed), 0.0, 1.0)
+
+# Distance PID
+e_buffer_distance = deque(maxlen=30)
+K_P_distance=1.1
+K_D_distance=0.002
+K_I_distance=1.0
+dt_distance=0.03
+def compute_pid_control_distance(current_distance):
+        e = (min_permitted_distance - current_distance)
+        e_buffer_distance.append(e)
+
+        if len(e_buffer_distance) >= 2:
+            de = (e_buffer_distance[-1] - e_buffer_distance[-2]) / dt_distance
+            ie = sum(e_buffer_distance) * dt_distance
+        else:
+            de = 0.0
+            ie = 0.0
+
+        return np.clip((K_P_distance * e) + (K_D_distance * de / dt_distance) + (K_I_distance * ie * dt_distance), 0.0, 1.0)
 
 carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
 
@@ -114,7 +137,7 @@ lastUpdate = 0
 try:
     while running:
         control = carla.VehicleControl()
-        # other_vehicle.apply_control(carla.VehicleControl(throttle=0.3))
+        other_vehicle.apply_control(carla.VehicleControl(throttle=0.3))
         
         debug_utility.draw_radar_bounding_range(radar)
         debug_utility.draw_radar_point_cloud_range(radar, radar_detection_h_radius, radar_detection_v_radius)
@@ -145,7 +168,14 @@ try:
             throttle, brake = compute_controls(ego_vehicle.get_velocity().length(), target_velocity)
             control = carla.VehicleControl(throttle=throttle, brake=brake)
         if pid_control:
-            control.throttle = compute_pid_control(ego_vehicle.get_velocity().length()*3.6)     
+            distance_error = min_depth - min_permitted_distance
+            if distance_error > 0:
+                control.throttle = compute_pid_control_speed(ego_vehicle.get_velocity().length()*3.6)
+            else:
+                print("Braking")
+                control.brake = compute_pid_control_distance(min_depth)
+                
+            #control = planner.run_step(min_depth)     
         ego_vehicle.apply_control(control)
         
         if show_in_carla:
