@@ -2,7 +2,8 @@ import numpy as np
 from collections import deque
 
 class PIDController:
-    def __init__(self, kp_speed, ki_speed, kd_speed, dt_speed, kp_distance, ki_distance, kd_distance, dt_distance):
+    def __init__(self, kp_speed = 1.5, ki_speed = 0.5, kd_speed = 0.001, dt_speed = 0.03, 
+                 kp_distance = 0.8, ki_distance = 0.5, kd_distance = 0.001, dt_distance = 0.03):
         # PID parameters for speed
         self.K_P_speed = kp_speed
         self.K_I_speed = ki_speed
@@ -51,6 +52,7 @@ class PIDController:
         """
         e = min_permitted_distance - current_distance
         self.e_buffer_distance.append(e)
+        print(current_distance)
 
         if len(self.e_buffer_distance) >= 2:
             de = (self.e_buffer_distance[-1] - self.e_buffer_distance[-2]) / self.dt_distance
