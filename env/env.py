@@ -29,11 +29,11 @@ class CarlaEnv(gym.Env):
         #Define the observation space
         self.observation_space = spaces.Box(
             low=np.array([0.0, 0.0, -30.0]), # [min(distance), min(ego_speed), min(relative_speed)] in m/s
-            high=np.array([250, 30.0, 30.0]), # [max(distance, max(ego_speed), max(relative_speed)] in m/s
+            high=np.array([50, 30.0, 30.0]), # [max(distance, max(ego_speed), max(relative_speed)] in m/s
             dtype=np.float32
         )
 
-        #Configure the default veicle
+        #Configure the default vehicle 
         self.blueprint_library = self.world.get_blueprint_library()
         self.vehicle_bp = self.blueprint_library.filter('vehicle.tesla.model3')[0]
         self.spawn_points = self.world.get_map().get_spawn_points()
@@ -92,7 +92,7 @@ class CarlaEnv(gym.Env):
         radar_bp = self.blueprint_library.find('sensor.other.radar')
         radar_bp.set_attribute('horizontal_fov', '2')
         radar_bp.set_attribute('vertical_fov', '2')
-        radar_bp.set_attribute('range', '250')  # Maximum range of the radar
+        radar_bp.set_attribute('range', '50')  # Maximum range of the radar
 
         self.radar_sensor = self.world.spawn_actor(
             radar_bp,
@@ -103,10 +103,11 @@ class CarlaEnv(gym.Env):
         # Get data from radar sensor
         self.radar_sensor.listen(self._radar_callback)
 
-        # Reset veichle state
-        random_velocity = rnd.uniform(2.7778, self.TARGET_SPEED + 1) # ~ min: 10km/h max: 60km/h
-        self.ego_vehicle.set_target_velocity(carla.Vector3D(random_velocity, 0, 0))
-        self.leader_vehicle.set_target_velocity(carla.Vector3D(random_velocity, 0, 0))
+        # Reset vehicle state
+        random_ego_velocity = rnd.uniform(2.7778, self.TARGET_SPEED + 1) # ~ min: 10km/h max: 60km/h
+        random_leader_velocity = rnd.uniform(2.7778, self.TARGET_SPEED + 5) # ~ min: 10km/h max: 60km/h
+        self.ego_vehicle.set_target_velocity(carla.Vector3D(random_ego_velocity, 0, 0))
+        self.leader_vehicle.set_target_velocity(carla.Vector3D(random_leader_velocity, 0, 0))
         
         # Wait for simulation to progress
         self.world.tick()
@@ -177,6 +178,7 @@ class CarlaEnv(gym.Env):
     def _compute_reward(self, observation, action):
         distance, ego_speed, relative_speed = observation # Leader speed is relative to ego vehicle
 
+        """
         tolerance = 1.0
         absolute_speed = ego_speed + relative_speed
         collision_time = distance / max(relative_speed, 0.1) # No zero velocity
@@ -210,14 +212,53 @@ class CarlaEnv(gym.Env):
                 #if object is detected and but collision time < 1.0
                 if bad_collision_time:
                     reward += -100
-        
+        """
+
+        tolerance = 2.0
+
+        no_detected_object = distance == np.nan
+        ego_maintains_target_speed = abs(self.TARGET_SPEED - tolerance) <= ego_speed <= abs(self.TARGET_SPEED + tolerance)
+        object_in_collision = distance < 1.0
+        have_strong_brake = abs(self.previous_action - action[1]) > 0.80
+        have_strong_throttle = abs(self.previous_action - action[0]) > 0.70
+        reward = 0
+
+        if no_detected_object:
+            if ego_maintains_target_speed:
+                reward += 5
+            else:
+                reward -= 10 * abs(self.TARGET_SPEED - ego_speed)
+        else:
+            # Compute safety distance
+            safety_distance = (ego_speed / 10) ** 2
+
+            # Compute time to collision
+            ttc = distance / max(relative_speed, 0.1)
+
+            if ttc < 1.0:
+                # Penalize for close proximity to the object
+                reward -= 100
+
+            if 2.4 <= ttc <= 5.0:
+                reward += 5
+
+            if ttc > 5.0:
+                reward -= 1
+            
+            if safety_distance - tolerance <= distance <= safety_distance + tolerance:
+                reward += 5
+
+            if object_in_collision:
+                reward -= 100
+
+
         # Penality for oscillation
         if have_strong_throttle:
             reward -= 1 + abs(action[0])
         else:
             reward += 1
         
-        if have_strong_breake:
+        if have_strong_brake:
             reward -= 2 + abs(action[1])
         else:
             reward += 1
@@ -228,15 +269,24 @@ class CarlaEnv(gym.Env):
 
     def _check_done(self, observation):
         distance, ego_speed, relative_speed = observation
-        collision_time = distance / max(relative_speed, 1) # No zero velocity
+        no_detected_object = distance == np.nan
         ego_stopped = abs(ego_speed) < 0.1
+        
+        if not no_detected_object:
 
-        if ego_stopped:
-            print("Ego vehicle has stopped.")
-            return True
-        
-        if collision_time < 1.0 and relative_speed != self.MAX_RELATIVE_SPEED:
-            print("Collision time detected.")
-            return True
-        
+            collision_time = distance / max(relative_speed, 1) # No zero velocity
+
+
+            if ego_stopped:
+                print("Ego vehicle has stopped.")
+                return True
+            
+            if collision_time < 1.0 and relative_speed != self.MAX_RELATIVE_SPEED:
+                print("Collision time detected.")
+                return True
+        else:
+            if ego_stopped:
+                print("Ego vehicle has stopped.")
+                return True
+
         return False
