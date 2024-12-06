@@ -7,7 +7,8 @@ import http.server
 import socketserver
 
 # Configurazione MQTT
-BROKER = "test.mosquitto.org" #"localhost" # Broker MQTT (usare localhost se è locale)
+BROKER = "localhost"
+# BROKER = "test.mosquitto.org" #"localhost" # Broker MQTT (usare localhost se è locale)
 PORT = 1883           # Porta del broker MQTT
 TOPIC = "grafico/dati/sdahfkjhdkjfhals"  # Topic MQTT su cui pubblicare
 client = mqtt.Client()

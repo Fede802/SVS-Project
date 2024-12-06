@@ -14,9 +14,12 @@ pid_control = True
 update_frequency = 0.2 #seconds
 
 radar_detection_h_radius = 1
-radar_detection_v_radius = 1.3
-target_velocity = 130
-min_permitted_distance = 100 # da aggiornare in base a quanto sto andando
+radar_detection_v_radius = 0.8
+max_target_velocity = 130
+radar_range_offset = 20
+target_velocity = 200
+min_distance_offset = 7
+min_permitted_distance = min_distance_offset # da aggiornare in base a quanto sto andando
 
 client = carla.Client('localhost', 2000)
 client.set_timeout(100.0)
@@ -35,7 +38,7 @@ carla_utility.destroy_all_vehicle_and_sensors(world) #to avoid spawning bugs
 
 
 def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
-    global min_ttc, min_depth
+    global min_ttc, min_depth, min_abs_relative_speed
     min_ttc = min_depth = float('inf')
     for detection, i in zip(data, range(len(data))):
         absolute_speed = abs(detection.velocity)
@@ -45,6 +48,7 @@ def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
                 ttc = detection.depth / absolute_speed
                 if ttc < min_ttc:
                     min_ttc = ttc
+                    min_abs_relative_speed = absolute_speed
             if detection.depth < min_permitted_distance:
                 if detection.depth < min_depth:
                     min_depth = detection.depth
@@ -55,7 +59,7 @@ pygame.display.set_mode((400, 300))
 ego_vehicle = carla_utility.spawn_vehicle_bp_at(world=world, vehicle='vehicle.tesla.cybertruck', spawn_point=carla.Transform(carla.Location(x=380.786957, y=31.491543, z=13.309415), carla.Rotation(yaw = 180)))
 other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=600)
 pid_controller = PIDController()
-radar_range = (target_velocity // 10) ** 2
+radar_range = (max_target_velocity // 10) ** 2 + radar_range_offset
 radar = carla_utility.spawn_radar(world, ego_vehicle, range=radar_range)
 radar.listen(lambda data: handle_measurement(data, radar))
 
@@ -94,7 +98,7 @@ try:
         control = carla.VehicleControl()
         #other_vehicle.apply_control(carla.VehicleControl(throttle=0.3))
         
-        debug_utility.draw_radar_bounding_range(radar)
+        # debug_utility.draw_radar_bounding_range(radar)
         debug_utility.draw_radar_point_cloud_range(radar, radar_detection_h_radius, radar_detection_v_radius)
         
         for event in pygame.event.get():
@@ -123,7 +127,7 @@ try:
             throttle, brake = compute_controls(ego_vehicle.get_velocity().length(), target_velocity)
             control = carla.VehicleControl(throttle=throttle, brake=brake)
         if pid_control:
-            min_permitted_distance = (((ego_vehicle.get_velocity().length() * 3.6) // 10)**2 ) + 7
+            min_permitted_distance = ((((ego_vehicle.get_velocity().length() * 3.6) - min_abs_relative_speed) // 10)**2 ) + min_distance_offset
             distance_error = min_depth - min_permitted_distance
             if distance_error > 0:
                 control.throttle = pid_controller.compute_pid_control_speed(target_velocity, ego_vehicle.get_velocity().length() * 3.6)

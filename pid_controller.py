@@ -2,9 +2,11 @@ import numpy as np
 from collections import deque
 
 class PIDController:
-    def __init__(self, kp_speed = 1.5, ki_speed = 0.5, kd_speed = 0.001, dt_speed = 0.03, 
-                 kp_distance = 0.8, ki_distance = 0.5, kd_distance = 0.001, dt_distance = 0.03):
+   # def __init__(self, kp_speed = 1.5, ki_speed = 0.5, kd_speed = 0.001, dt_speed = 0.03, 
+    #             kp_distance = 0.8, ki_distance = 0.5, kd_distance = 0.001, dt_distance = 0.03):
         # PID parameters for speed
+    def __init__(self, kp_speed = 0.4, ki_speed = 0.2, kd_speed = 0.01, dt_speed = 0.05, 
+                kp_distance = 2.0, ki_distance = 0.02, kd_distance = 1.0, dt_distance = 0.05):
         self.K_P_speed = kp_speed
         self.K_I_speed = ki_speed
         self.K_D_speed = kd_speed
