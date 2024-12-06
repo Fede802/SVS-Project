@@ -1,13 +1,9 @@
-import os
-import gymnasium as gym
 from stable_baselines3 import PPO
-from env.env import CarlaEnv
+from env.env import AccEnv
 
 
 # Trained environment
-env = CarlaEnv()
-
-# Check environment
+env = AccEnv()
 
 
 # Initialize the PPO model
@@ -16,13 +12,16 @@ model = PPO(
     env,
     verbose=1,
     gamma=0.99,  # Discount factor
-    learning_rate=0.0001,  # Learning rate
+    learning_rate=0.0003,  # Learning rate
     n_steps=2048,  # Rollout buffer size
     batch_size=64,  # Batch size for training
     ent_coef=0.01,  # Entropy coefficient
+    n_epochs=100,
+    tensorboard_log="./log"
+    
 )
 # Train the PPO model
-model.learn(total_timesteps=500000)
+model.learn(total_timesteps=100000, progress_bar=True)
 
 
 # Save the final model
