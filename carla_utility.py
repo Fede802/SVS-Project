@@ -1,6 +1,7 @@
-import carla, time, debug_utility
+import carla, time, debug_utility, math_utility
 
-def __spawn_actor(world, blueprint, spawn_point, attach_to = None):
+def __spawn_actor(world: carla.World, blueprint, spawn_point: carla.Transform, attach_to: carla.Actor = None):
+    __setup_spectactor(world.get_spectator(), carla.Transform(math_utility.add(spawn_point.location, attach_to.get_location() if attach_to != None else carla.Location())))
     actor = world.spawn_actor(blueprint, spawn_point, attach_to)
     time.sleep(2)
     return actor
@@ -64,3 +65,11 @@ def destroy_all_vehicle_and_sensors(world: carla.World):
         v.destroy()
     for v in world.get_actors().filter('sensor.*'):
         v.destroy()
+
+def __setup_spectactor(spectator, spawn_point: carla.Transform):
+    if math_utility.sub(spectator.get_location(), spawn_point.location).length() > 1000:
+        spectator.set_transform(spawn_point)
+        time.sleep(10)
+
+def compute_security_distance(velocity):
+    return (velocity // 10) ** 2

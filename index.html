@@ -83,7 +83,8 @@
         });
 
         // Connessione al broker MQTT
-        const brokerUrl = 'wss://test.mosquitto.org:8081' //'ws://localhost:9001';  // Usa WebSocket per MQTT
+        const brokerUrl = 'ws://localhost:9001'
+        // const brokerUrl = 'wss://test.mosquitto.org:8081' //'ws://localhost:9001';  // Usa WebSocket per MQTT
         const topic = 'grafico/dati/sdahfkjhdkjfhals';            // Topic da cui ricevere i dati
         const client = mqtt.connect(brokerUrl);
 
