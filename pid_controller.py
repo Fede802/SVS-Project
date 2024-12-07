@@ -59,7 +59,7 @@ class PIDController:
         """
         e = min_permitted_distance - current_distance
         self.e_buffer_distance.append(e)
-        print(current_distance)
+        # print(current_distance)
         self.dt_distance = time.time() - self.last_update_distance_time
         self.last_update_distance_time = time.time()
         if len(self.e_buffer_distance) >= 2:

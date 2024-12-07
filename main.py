@@ -25,9 +25,9 @@ client = carla.Client('localhost', 2000)
 client.set_timeout(100.0)
 if send_info:
     start_servers()
-print(client.get_available_maps())
-#3 bella dritta, 4 anche meglio
-client.load_world('Town04')
+# print(client.get_available_maps())
+# #3 bella dritta, 4 anche meglio
+# client.load_world('Town04')
 
 
 world = client.get_world()
@@ -35,7 +35,8 @@ spectator = world.get_spectator()
 
 carla_utility.destroy_all_vehicle_and_sensors(world) #to avoid spawning bugs
 
-
+# while True:
+#     print(spectator.get_transform())
 
 def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
     global min_ttc, min_depth
@@ -54,9 +55,12 @@ def handle_measurement(data: carla.RadarMeasurement, radar: carla.Actor):
 
 pygame.init()
 pygame.display.set_mode((400, 300))
+# ego_vehicle = carla_utility.spawn_vehicle_bp_at(world=world, vehicle='vehicle.tesla.cybertruck', spawn_point=carla.Transform(carla.Location(x=380.786957, y=31.491543, z=13.309415), carla.Rotation(yaw = 180)))
+# ego_vehicle = carla_utility.spawn_vehicle_bp_at(world=world, vehicle='vehicle.tesla.cybertruck', spawn_point=carla.Transform(carla.Location(x=2027, y=2184, z=187), carla.Rotation(yaw = 0.5)))
+# ego_vehicle = carla_utility.spawn_vehicle_bp_at(world=world, vehicle='vehicle.tesla.cybertruck', spawn_point=carla.Transform(carla.Location(x=0, y=-1048, z=187), carla.Rotation(yaw = 51)))
+ego_vehicle = carla_utility.spawn_vehicle_bp_at(world=world, vehicle='vehicle.tesla.cybertruck', spawn_point=carla.Transform(carla.Location(x=2388, y=6164, z=187), carla.Rotation(yaw = -88.2)))
 
-ego_vehicle = carla_utility.spawn_vehicle_bp_at(world=world, vehicle='vehicle.tesla.cybertruck', spawn_point=carla.Transform(carla.Location(x=380.786957, y=31.491543, z=13.309415), carla.Rotation(yaw = 180)))
-other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
+# other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
 pid_controller = PIDController()
 radar_range = (max_target_velocity // 10) ** 2 + radar_range_offset
 radar = carla_utility.spawn_radar(world, ego_vehicle, range=radar_range)
@@ -115,10 +119,10 @@ try:
             # control.reverse = True
             target_control.brake = 0.5
         if keys[pygame.K_a]:
-            # control.steer = -0.38
+            control.steer = -0.38
             target_control.steer = -0.38
         if keys[pygame.K_d]:
-            # control.steer = 0.38
+            control.steer = 0.38
             target_control.steer = 0.38
         if keys[pygame.K_e]:
             control.brake = 0.5
@@ -134,22 +138,23 @@ try:
             target_control.brake = 1.0
             min_permitted_distance = ((((ego_vehicle.get_velocity().length() * 3.6) ) // 10)**2 ) + min_distance_offset
             distance_error = min_depth - min_permitted_distance
-            print(distance_error, min_depth, min_permitted_distance)
+            # print(distance_error, min_depth, min_permitted_distance)
             if distance_error > 0:
                 control.throttle = pid_controller.compute_pid_control_speed(target_velocity, ego_vehicle.get_velocity().length() * 3.6)
             else:
                 control.brake = pid_controller.compute_pid_control_distance(min_permitted_distance, min_depth)
                 
-            #control = planner.run_step(min_depth)     
+            #control = planner.run_step(min_depth) 
+        control.throttle = 1.0        
         ego_vehicle.apply_control(control)
-        other_vehicle.apply_control(target_control)
+        # other_vehicle.apply_control(target_control)
         
         if show_in_carla:
             carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
         if show_in_camera:
             cv2.imshow('RGB Camera', video_output)
         pygame.display.flip()
-       
+        print(ego_vehicle.get_velocity().length()*3.6)
         if(time.time() - lastUpdate > update_frequency):
             if send_info:
                 send_data({"velocity": ego_vehicle.get_velocity().length()*3.6, "acceleration": ego_vehicle.get_acceleration().length()})
