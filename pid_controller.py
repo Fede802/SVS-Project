@@ -73,4 +73,13 @@ class PIDController:
             (self.K_P_distance * e) + (self.K_D_distance * de) + (self.K_I_distance * ie),
             0.0,
             1.0
-        )
+        ) 
+    
+#old compute control idea
+# errore_vel = velocita_target - (velocita_corrente * 3.6)
+# errore_vel_perc = abs(errore_vel) * 100 / velocita_target
+
+# if errore_vel > 0:
+#             throttle = 1.0 * errore_vel_perc
+#         else:
+#             brake = 1.0 * errore_vel_perc    
