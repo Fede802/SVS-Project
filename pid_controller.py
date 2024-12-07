@@ -12,14 +12,14 @@ class PIDController:
         self.K_I_speed = ki_speed
         self.K_D_speed = kd_speed
         self.dt_speed = dt_speed
-        self.e_buffer_speed = deque(maxlen=30)
+        self.e_buffer_speed = deque(maxlen=2)
         self.last_update_speed_time = time.time()
         # PID parameters for distance
         self.K_P_distance = kp_distance
         self.K_I_distance = ki_distance
         self.K_D_distance = kd_distance
         self.dt_distance = dt_distance
-        self.e_buffer_distance = deque(maxlen=30)
+        self.e_buffer_distance = deque(maxlen=2)
         self.last_update_distance_time = time.time()
 
     def compute_pid_control_speed(self, target_speed, current_speed):
