@@ -31,7 +31,7 @@ world = client.get_world()
 spectator = world.get_spectator()
 
 carla_utility.destroy_all_vehicle_and_sensors(world) #to avoid spawning bugs
-carla_utility.setup_spectactor(spectator, spawn_point)
+# carla_utility.setup_spectactor(spectator, spawn_point)
 
 video_output = np.zeros((600, 800, 4), dtype=np.uint8)
 def camera_callback(image):
