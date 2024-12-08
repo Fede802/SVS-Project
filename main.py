@@ -4,9 +4,11 @@ from server import start_servers, send_data, close_servers
 from collections import deque
 from pid_controller import PIDController
 from manual_control import compute_control, ControlInfo
+from log_utility import Logger
 
 
 send_info = True
+save_info = True
 show_in_carla = False
 show_in_camera = True
 pid_cc = True
@@ -68,6 +70,7 @@ if show_in_camera:
 
 pid_controller = PIDController(update_frequency, min_distance_offset) #add buffer_size = None to disable buffer
 control_info = ControlInfo(pid_cc)
+logger = Logger()
 lastUpdate = 0
 
 try:
@@ -80,6 +83,8 @@ try:
                 pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth)           
             if send_info:
                 send_data({"velocity": ego_vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.get_acceleration().length()})
+            if save_info:
+                logger.write("velocity: " + str(ego_vehicle.get_velocity().length() * 3.6)+ ", acceleration: " + str(ego_vehicle.get_acceleration().length()))
             lastUpdate = time.time()
 
         compute_control(control_info)
@@ -99,6 +104,8 @@ except KeyboardInterrupt:
 finally:
     pygame.quit()
     cv2.destroyAllWindows()  
-    carla_utility.destroy_all_vehicle_and_sensors(world)  
+    carla_utility.destroy_all_vehicle_and_sensors(world) 
+    logger.close() 
     if send_info: 
         close_servers()
+
