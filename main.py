@@ -3,6 +3,7 @@ import numpy as np
 from server import start_servers, send_data, close_servers
 from collections import deque
 from pid_controller import PIDController
+from manual_control import compute_control
 
 
 send_info = True
@@ -71,48 +72,24 @@ lastUpdate = 0
 
 try:
     while running:
-        control = carla.VehicleControl()
-        target_control = carla.VehicleControl()
         #other_vehicle.apply_control(carla.VehicleControl(throttle=0.3))
         
         # debug_utility.draw_radar_bounding_range(radar)
         # debug_utility.draw_radar_point_cloud_range(radar, radar_detection_h_radius, radar_detection_v_radius)
-        
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.QUIT or event.key == pygame.K_ESCAPE:
-                    running = False
-
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_w]:
-            # control.throttle = 0.5
-            target_control.throttle = 1.0
-        if keys[pygame.K_s]:
-            # control.throttle = 0.5
-            target_control.brake = 1.0
-        if keys[pygame.K_a]:
-            # control.steer = -0.38
-            target_control.steer = -0.38
-        if keys[pygame.K_d]:
-            # control.steer = 0.38
-            target_control.steer = 0.38
-        if keys[pygame.K_e]:
-            control.brake = 0.5
-        if keys[pygame.K_r]:
-            cruise_control = True
-        if keys[pygame.K_p]:
-            cruise_control = False
-        
+        control_info = compute_control()
+        ego_vehicle_control = control_info.ego_control
+        target_vehicle_control = control_info.target_control
+        running = control_info.running
         if pid_control:
             min_permitted_distance = carla_utility.compute_security_distance(ego_vehicle.get_velocity().length() * 3.6) + min_distance_offset
             distance_error = min_depth - min_permitted_distance
             if distance_error > 0:
-                control.throttle = pid_controller.compute_pid_control_speed(target_velocity, ego_vehicle.get_velocity().length() * 3.6)
+                ego_vehicle_control.throttle = pid_controller.compute_pid_control_speed(target_velocity, ego_vehicle.get_velocity().length() * 3.6)
             else:
-                control.brake = pid_controller.compute_pid_control_distance(min_permitted_distance, min_depth)
+                ego_vehicle_control.brake = pid_controller.compute_pid_control_distance(min_permitted_distance, min_depth)
     
-        ego_vehicle.apply_control(control)
-        other_vehicle.apply_control(target_control)
+        ego_vehicle.apply_control(control_info.ego_control)
+        other_vehicle.apply_control(control_info.target_control)
         
         if show_in_carla:
             carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
