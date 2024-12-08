@@ -3,15 +3,14 @@ import numpy as np
 from server import start_servers, send_data, close_servers
 from collections import deque
 from pid_controller import PIDController
-from manual_control import compute_control
+from manual_control import compute_control, ControlInfo
 
 
 send_info = True
 show_in_carla = False
 show_in_camera = True
-running = True
-pid_control = True
-update_frequency = 0.2 #seconds
+pid_cc = True
+update_frequency = 0.01 #seconds
 
 radar_detection_h_radius = 1
 radar_detection_v_radius = 0.8
@@ -42,11 +41,11 @@ def radar_callback(data: carla.RadarMeasurement, radar: carla.Actor):
     global min_ttc, min_depth
     min_ttc = min_depth = float('inf')
     for detection, i in zip(data, range(len(data))):
-        absolute_speed = abs(detection.velocity)
+        absolute_velocity = abs(detection.velocity)
         if debug_utility.evaluate_point(radar, detection, radar_detection_h_radius, radar_detection_v_radius):
             # debug_utility.draw_radar_point(radar, detection)
-            if absolute_speed != 0:
-                ttc = detection.depth / absolute_speed
+            if absolute_velocity != 0:
+                ttc = detection.depth / absolute_velocity
                 if ttc < min_ttc:
                     min_ttc = ttc
             if detection.depth < min_depth:
@@ -67,40 +66,33 @@ if show_in_camera:
     camera.listen(lambda image: camera_callback(image))
     cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
 
-pid_controller = PIDController(tc=update_frequency)
+pid_controller = PIDController(update_frequency, min_distance_offset) #add buffer_size = None to disable buffer
+control_info = ControlInfo(pid_cc)
 lastUpdate = 0
 
 try:
-    while running:
-        #other_vehicle.apply_control(carla.VehicleControl(throttle=0.3))
-        
+    while control_info.running:
         # debug_utility.draw_radar_bounding_range(radar)
         # debug_utility.draw_radar_point_cloud_range(radar, radar_detection_h_radius, radar_detection_v_radius)
-        control_info = compute_control()
-        ego_vehicle_control = control_info.ego_control
-        target_vehicle_control = control_info.target_control
-        running = control_info.running
-        if pid_control:
-            min_permitted_distance = carla_utility.compute_security_distance(ego_vehicle.get_velocity().length() * 3.6) + min_distance_offset
-            distance_error = min_depth - min_permitted_distance
-            if distance_error > 0:
-                ego_vehicle_control.throttle = pid_controller.compute_pid_control_speed(target_velocity, ego_vehicle.get_velocity().length() * 3.6)
-            else:
-                ego_vehicle_control.brake = pid_controller.compute_pid_control_distance(min_permitted_distance, min_depth)
-    
-        ego_vehicle.apply_control(control_info.ego_control)
-        other_vehicle.apply_control(control_info.target_control)
-        
+
+        if(time.time() - lastUpdate > update_frequency):
+            if control_info.pid_cc:
+                pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth)           
+            if send_info:
+                send_data({"velocity": ego_vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.get_acceleration().length()})
+            lastUpdate = time.time()
+
+        compute_control(control_info)
+
         if show_in_carla:
             carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
         if show_in_camera:
             cv2.imshow('RGB Camera', video_output)
+
+        # print(ego_vehicle.get_velocity().length()*3.6)
+        ego_vehicle.apply_control(control_info.ego_control)
+        other_vehicle.apply_control(control_info.target_control)
         pygame.display.flip()
-        print(ego_vehicle.get_velocity().length()*3.6)
-        if(time.time() - lastUpdate > update_frequency):
-            if send_info:
-                send_data({"velocity": ego_vehicle.get_velocity().length()*3.6, "acceleration": ego_vehicle.get_acceleration().length()})
-            lastUpdate = time.time()
         world.tick()
 except KeyboardInterrupt:
     pass
