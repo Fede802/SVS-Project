@@ -1,9 +1,12 @@
 import carla, time, debug_utility, math_utility
 
 def __spawn_actor(world: carla.World, blueprint, spawn_point: carla.Transform, attach_to: carla.Actor = None):
-    __setup_spectactor(world.get_spectator(), carla.Transform(math_utility.add(spawn_point.location, attach_to.get_location() if attach_to != None else carla.Location())))
-    actor = world.spawn_actor(blueprint, spawn_point, attach_to)
+    carLocation = math_utility.add(spawn_point.location, attach_to.get_location() if attach_to != None else carla.Location())
+    __setup_spectactor(world.get_spectator(), carla.Transform(carLocation))
+    actor = world.try_spawn_actor(blueprint, spawn_point, attach_to)
     time.sleep(2)
+    if actor is None:
+        print('Actor not spawned', carLocation)
     return actor
 
 def __transform_vector(point: carla.Transform, transform: carla.Transform):
@@ -32,7 +35,7 @@ def spawn_vehicle_at(world, vehicle_index=0, spawn_point=carla.Transform(), patt
 def spawn_vehicle_in_front_of(world, vehicle: carla.Actor, vehicle_index=0, offset=0):
     v3d = debug_utility.get_point_at(vehicle, vehicle.get_location(), offset)
     #+10 on z is to avoid spawn bug
-    return spawn_vehicle_at(world,vehicle_index,spawn_point=carla.Transform(carla.Location(v3d.x, v3d.y, v3d.z + 10), vehicle.get_transform().rotation))
+    return spawn_vehicle_at(world,vehicle_index,spawn_point=carla.Transform(carla.Location(v3d.x, v3d.y, v3d.z + 2), vehicle.get_transform().rotation))
 
 def spawn_vehicle_bp_in_front_of(world, vehicle, vehicle_bp_name, offset=0):
     v3d = debug_utility.get_point_at(vehicle, vehicle.get_location(), offset)

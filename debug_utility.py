@@ -64,3 +64,10 @@ def evaluate_point(radar: carla.Actor, detection: carla.RadarDetection, h_radius
     z = -detection.depth * math.cos(detection.azimuth) * math.sin(detection.altitude) 
 
     return 0 < x < radar_range and -h_radius < y < h_radius and -v_radius < z < v_radius
+
+def get_point_from_trasform(transform: carla.Transform, distance: int):
+    radar_f_vector = transform.get_forward_vector()
+    return math_utility.vector_scalar_op(lambda a, b: a + distance * b, transform.location, radar_f_vector)
+
+def get_velocity_vector(velocity, direction: carla.Rotation):
+    return carla.Vector3D(velocity * math.cos(math.radians(direction.yaw)), velocity * math.sin(math.radians(direction.yaw)), 0)
