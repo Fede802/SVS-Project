@@ -66,7 +66,7 @@ if show_in_camera:
     camera.listen(lambda image: camera_callback(image))
     cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
 
-pid_controller = PIDController()
+pid_controller = PIDController(tc=update_frequency)
 lastUpdate = 0
 
 try:
