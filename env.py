@@ -107,7 +107,7 @@ class AccEnv(gym.Env):
         observation = self._get_observation()
         reward = self._compute_reward(observation)
         done = self._check_done(observation)
-        
+    
         return observation, reward, done, False, {}
     
     def _get_observation(self):

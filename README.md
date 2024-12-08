@@ -27,3 +27,6 @@ Acc Schema Image:
   <a href="">
     <img src="imgs/acc-schema.png" alt="Schema" width="auto" height="256" />
   </a>
+
+env step call
+reward piccoli

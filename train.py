@@ -24,7 +24,7 @@ model = PPO(
 )
 # env = VecMonitor(SubprocVecEnv([AccEnv() for i in range(10)]), filename=None)
 # Train the PPO model
-model.learn(total_timesteps=10000, progress_bar=True)
+model.learn(total_timesteps=2048*100, progress_bar=True)
 
 
 # Save the final model
