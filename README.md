@@ -27,3 +27,5 @@ Acc Schema Image:
   <a href="">
     <img src="imgs/acc-schema.png" alt="Schema" width="auto" height="256" />
   </a>
+
+  https://prod.liveshare.vsengsaas.visualstudio.com/join?890F73ED1FE9E42300B00D236264FF532C1A
