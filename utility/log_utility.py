@@ -1,4 +1,5 @@
 import os
+
 class Logger:
     def __init__(self, log_dir = "logs", log_file_name_prefix = "log"):
         self.log_file = open(self.__compute_file_path(log_dir, log_file_name_prefix), "w")

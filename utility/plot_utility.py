@@ -11,7 +11,7 @@ def __parse_log_file(log_file, log_dir = "logs"):
     return velocities, accelerations    
 
 velocities1, accelerations1 = __parse_log_file("log_1.txt")
-velocities2, accelerations2 = __parse_log_file("log_2.txt")
+velocities2, accelerations2 = __parse_log_file("log_3.txt")
 
 size = min(len(velocities1), len(velocities2))
 velocities1 = velocities1[:size]
@@ -23,11 +23,11 @@ x = range(0, size)
 
 fig, axs = plt.subplots(1, 2, figsize=(10, 8))
 axs[0].plot(x, velocities1, 'r')
-axs[0].plot(x, accelerations1, 'b')
+axs[0].plot(x, velocities2, 'b')
 axs[0].legend()
 axs[0].grid(True)
 
-axs[1].plot(x, velocities2, 'r')
+axs[1].plot(x, accelerations1, 'r')
 axs[1].plot(x, accelerations2, 'b')
 axs[1].legend()
 axs[1].grid(True)

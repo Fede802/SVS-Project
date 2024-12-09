@@ -1,6 +1,5 @@
 import math, carla, math_utility
 
-
 def draw_radar_bounding_range(radar: carla.Actor, life_time = 0.1, color = carla.Color(255, 0, 0)):
     debug = radar.get_world().debug
     radar_h_fov = math.radians(int(radar.attributes.get('horizontal_fov')))

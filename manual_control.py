@@ -1,5 +1,4 @@
-import pygame
-import carla
+import pygame, carla
 
 class ControlInfo:
     def __init__(self, pid_cc=False, ego_control=carla.VehicleControl(), target_control=carla.VehicleControl()):

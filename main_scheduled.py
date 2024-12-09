@@ -6,7 +6,7 @@ import carla, time, pygame, cv2, debug_utility, carla_utility
 from log_utility import Logger
 import numpy as np
 from server import start_servers, send_data, close_servers
-from pid_controller import PIDController
+from pid_controller_scheduled import PIDController
 from manual_control import compute_control, ControlInfo
 
 send_info = True

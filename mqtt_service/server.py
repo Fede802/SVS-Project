@@ -1,10 +1,5 @@
-import json
+import json, threading, http.server, socketserver
 import paho.mqtt.client as mqtt
-import threading
-import http.server
-import socketserver
-import os
-
 
 # Configurazione MQTT
 BROKER = "localhost"
