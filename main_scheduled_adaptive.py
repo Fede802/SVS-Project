@@ -6,7 +6,7 @@ import carla, time, pygame, cv2, debug_utility, carla_utility
 from log_utility import Logger
 import numpy as np
 from server import start_servers, send_data, close_servers
-from pid_controller_random_adaptive import PIDController
+from pid_controller_scheduled_adaptive import PIDController
 from manual_control import compute_control, ControlInfo
 import plot_utility
 
@@ -73,7 +73,7 @@ if show_in_camera:
     camera.listen(lambda image: camera_callback(image))
     cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
 
-pid_controller = PIDController(learning_rate, min_distance_offset) #add buffer_size = None to disable buffer
+pid_controller = PIDController(learning_rate, update_frequency, min_distance_offset) #add buffer_size = None to disable buffer
 control_info = ControlInfo(pid_cc)
 logger = Logger()
 lastUpdate = 0
@@ -82,9 +82,10 @@ try:
     while control_info.running:
         # debug_utility.draw_radar_bounding_range(radar)
         # debug_utility.draw_radar_point_cloud_range(radar, radar_detection_h_radius, radar_detection_v_radius)
-        if control_info.pid_cc:
-            pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth) 
-        if(time.time() - lastUpdate > update_frequency):           
+
+        if(time.time() - lastUpdate > update_frequency):
+            if control_info.pid_cc:
+                pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth)           
             if send_info:
                 send_data({"velocity": ego_vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.get_acceleration().length()})
             if save_info:
@@ -106,7 +107,6 @@ try:
 except KeyboardInterrupt:
     pass
 finally:
-    
     pygame.quit()
     cv2.destroyAllWindows()  
     carla_utility.destroy_all_vehicle_and_sensors(world) 
