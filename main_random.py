@@ -8,9 +8,11 @@ import numpy as np
 from server import start_servers, send_data, close_servers
 from pid_controller_random import PIDController
 from manual_control import compute_control, ControlInfo
+import plot_utility
 
 send_info = True
 save_info = True
+show_log = True
 show_in_carla = False
 show_in_camera = True
 pid_cc = True
@@ -63,7 +65,7 @@ radar = carla_utility.spawn_radar(world, ego_vehicle, range=radar_range)
 radar.listen(lambda data: radar_callback(data, radar))
 carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
 
-other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
+# other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
 
 if show_in_camera:
     camera = carla_utility.spawn_camera(world=world, attach_to=ego_vehicle, transform=carla.Transform(carla.Location(x=-6, z=5), carla.Rotation(pitch=-30)))
@@ -97,7 +99,7 @@ try:
 
         # print(ego_vehicle.get_velocity().length()*3.6)
         ego_vehicle.apply_control(control_info.ego_control)
-        other_vehicle.apply_control(control_info.target_control)
+        # other_vehicle.apply_control(control_info.target_control)
         pygame.display.flip()
         world.tick()
 except KeyboardInterrupt:
@@ -109,4 +111,6 @@ finally:
     logger.close() 
     if send_info: 
         close_servers()
+    if show_log:
+        plot_utility.plot_last_run()    
 

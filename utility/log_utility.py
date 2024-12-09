@@ -20,7 +20,8 @@ class Logger:
     def __compute_file_path(self, log_dir, log_file_name_prefix):
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-        log_number = int(get_last_log_file(log_dir).split("_")[-1].split(".")[0])
+        last_log_filename = get_last_log_file(log_dir)
+        log_number = int(last_log_filename.split("_")[-1].split(".")[0]) if last_log_filename != "" else 0
         return log_dir+"/"+log_file_name_prefix + "_" + str(log_number + 1) + ".txt"    
 
     def write(self, message):

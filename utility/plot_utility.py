@@ -80,4 +80,4 @@ def custom_plot(*plot_files, log_dir = "logs"):
 
 if __name__ == "__main__":
     random.seed(42)
-    custom_plot("log_1.txt", "log_2.txt")    
+    custom_plot("log_1.txt", "log_2.txt", "log_3.txt")    
