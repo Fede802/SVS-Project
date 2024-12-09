@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import log_utility, random
 
 def __parse_log_file(log_file, log_dir = "logs"):
     data = open(log_dir+"/"+log_file, "r").readlines()
@@ -12,68 +13,71 @@ def __parse_log_file(log_file, log_dir = "logs"):
         accelerations.append(float(values[1]))
         throttles.append(float(values[2]))
         brakes.append(float(values[3]))
-    return velocities, accelerations, throttles, brakes   
+    return velocities, accelerations, throttles, brakes
 
-velocities1, accelerations1, throttles1, brakes1 = __parse_log_file("log_1.txt")
-# velocities2, accelerations2, throttles2, brakes2 = __parse_log_file("log_2.txt")
-# velocities3, accelerations3, throttles3, brakes3 = __parse_log_file("log_3.txt")
+def plot_last_run():
+    velocities, accelerations, throttles, brakes = __parse_log_file(log_utility.get_last_log_file())
+    x = range(0, len(velocities))
+    fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+    axs[0,0].plot(x, velocities, 'r', label='Velocity')
+    axs[0,0].legend()
+    axs[0,0].grid(True)
+    axs[0,1].plot(x, accelerations, 'r', label='Acceleration')
+    axs[0,1].legend()
+    axs[0,1].grid(True)
+    axs[1,0].plot(x, throttles, 'r', label='Throttle', marker='o')
+    axs[1,0].legend()
+    axs[1,0].grid(True)
+    axs[1,1].plot(x, brakes, 'r', label='Brake', marker='o')
+    axs[1,1].legend()
+    axs[1,1].grid(True)
+    plt.tight_layout()
+    plt.show() 
 
-size = len(velocities1)#min(len(velocities1), len(velocities2), len(velocities3))
-velocities1 = velocities1[:size]
-accelerations1 = accelerations1[:size]
-throttles1= throttles1[:size]
-brakes1 = brakes1[:size]
-# velocities2 = velocities2[:size]
-# accelerations2 = accelerations2[:size]
-# throttles2 = throttles2[:size]
-# brakes2 = brakes2[:size]
-# velocities3 = velocities3[:size]
-# accelerations3 = accelerations3[:size]
-# throttles3 = throttles3[:size]
-# brakes3 = brakes3[:size]
+def custom_plot(*plot_files, log_dir = "logs"):
 
+    velocities = []
+    accelerations = []
+    throttles = []
+    brakes = []
 
-x = range(0, size)
+    for plot_file in plot_files:
+        velocity, acceleration, throttle, brake = __parse_log_file(plot_file, log_dir)
+        velocities.append(velocity)
+        accelerations.append(acceleration)
+        throttles.append(throttle)
+        brakes.append(brake)
 
-fig, axs = plt.subplots(2, 2, figsize=(10, 8))
-axs[0,0].plot(x, velocities1, 'r', label='log_1')
-# axs[0,0].plot(x, velocities2, 'b', label='log_2')
-# axs[0,0].plot(x, velocities3, 'g', label='log_3')
-axs[0,0].legend()
-axs[0,0].grid(True)
+    size = min([len(velocity) for velocity in velocities])  
+    x = range(0, size)  
 
-axs[0,1].plot(x, accelerations1, 'r', label='log_1')
-# axs[0,1].plot(x, accelerations2, 'b', label='log_2')
-# axs[0,1].plot(x, accelerations3, 'g', label='log_3')
-axs[0,1].legend()
-axs[0,1].grid(True)
+    for i in range(len(velocities)):
+        velocities[i] = velocities[i][:size]
+        accelerations[i] = accelerations[i][:size]
+        throttles[i] = throttles[i][:size]
+        brakes[i] = brakes[i][:size]
 
-axs[1,0].plot(x, throttles1, 'r', label='log_1', marker='o')
-# axs[1,0].plot(x, throttles2, 'b', label='log_2', marker='o')
-# axs[1,0].plot(x, throttles3, 'g', label='log_3', marker='o')
-axs[1,0].legend()
-axs[1,0].grid(True)
+    fig, axs = plt.subplots(2, 2, figsize=(10, 8))
 
-axs[1,1].plot(x, brakes1, 'r', label='log_1', marker='o')
-# axs[1,1].plot(x, brakes2, 'b', label='log_2', marker='o')
-# axs[1,1].plot(x, brakes3, 'g', label='log_3', marker='o')
-axs[1,1].legend()
-axs[1,1].grid(True)
+    for i in range(len(velocities)):
+        random_color = (random.random(), random.random(), random.random())
+        axs[0,0].plot(x, velocities[i], label='log_'+str(i+1), color=random_color)
+        axs[0,1].plot(x, accelerations[i], label='log_'+str(i+1), color=random_color)
+        axs[1,0].plot(x, throttles[i], label='log_'+str(i+1), marker='o', color=random_color)
+        axs[1,1].plot(x, brakes[i], label='log_'+str(i+1), marker='o', color=random_color)
 
-plt.tight_layout()
-plt.show()
+    axs[0,0].legend()
+    axs[0,0].grid(True)
+    axs[0,1].legend()
+    axs[0,1].grid(True)
+    axs[1,0].legend()
+    axs[1,0].grid(True)
+    axs[1,1].legend()
+    axs[1,1].grid(True)
 
-# plt.plot(x, y, color='r')  # Red line for sin(x)
-# plt.plot(x, y, color='b')  # Blue line for cos(x)
+    plt.tight_layout()
+    plt.show()
 
-# # Add labels and title
-# plt.xlabel('x values')
-# plt.ylabel('y values')
-# plt.title('Plot of logs')
-
-# # Display the legend
-# plt.legend()
-
-# plt.grid(True)
-
-# plt.show()
+if __name__ == "__main__":
+    random.seed(42)
+    custom_plot("log_1.txt", "log_2.txt")    

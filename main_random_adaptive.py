@@ -8,9 +8,11 @@ import numpy as np
 from server import start_servers, send_data, close_servers
 from pid_controller_random_adaptive import PIDController
 from manual_control import compute_control, ControlInfo
+import plot_utility
 
 send_info = True
 save_info = True
+show_log = True
 show_in_carla = False
 show_in_camera = True
 pid_cc = True
@@ -103,10 +105,13 @@ try:
 except KeyboardInterrupt:
     pass
 finally:
+    
     pygame.quit()
     cv2.destroyAllWindows()  
     carla_utility.destroy_all_vehicle_and_sensors(world) 
     logger.close() 
     if send_info: 
         close_servers()
+    if show_log:
+        plot_utility.plot_last_run()    
 
