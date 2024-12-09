@@ -4,12 +4,13 @@ import gymnasium as gym
 from gymnasium import spaces
 import carla
 import debug_utility
-
+import math
 
 class AccEnv(gym.Env):
     
     TARGET_SPEED = 16.6667 #60 km/h
     SPAWN_POINT = carla.Location(x=2393, y=6000, z=167)
+    spawn_yaw = -88.2
 
     def __init__(self):
         super(AccEnv, self).__init__()
@@ -19,7 +20,7 @@ class AccEnv(gym.Env):
         self.client.set_timeout(100.0)
         self.world = self.client.get_world()
         self.spectator = self.world.get_spectator()
-        self.spectator.set_transform(carla.Transform(self.SPAWN_POINT, carla.Rotation(yaw = -88.2)))
+        self.spectator.set_transform(carla.Transform(self.SPAWN_POINT, carla.Rotation(yaw = self.spawn_yaw)))
 
         #Define the action for ego vehicle [throttle, break]
         self.action_space = spaces.Box(
@@ -52,12 +53,13 @@ class AccEnv(gym.Env):
 
 
     def spawn_vehicles(self):
-        spawn_point_leader = carla.Transform(self.SPAWN_POINT, carla.Rotation(yaw = -88.2))
+        spawn_point_leader = carla.Transform(self.SPAWN_POINT, carla.Rotation(yaw = self.spawn_yaw))
         self.leader_vehicle = self.world.spawn_actor(self.vehicle_bp, spawn_point_leader)
 
         # Spawn point ego vehicle at random position
         random_distance = rnd.uniform(50.00, 100.0)
 
+        # TODO: Use utility function
         ego_vehicle = carla.Location(
             x = self.SPAWN_POINT.x - 1,
             y = self.SPAWN_POINT.y + 50.0,
@@ -106,8 +108,8 @@ class AccEnv(gym.Env):
         # Reset vehicle state
         random_ego_velocity = rnd.uniform(9.0, self.TARGET_SPEED) # ~ min: 32,4km/h max: 60km/h
         random_leader_velocity = rnd.uniform(9.0, self.TARGET_SPEED + 5) # ~ min: 32,4km/h max: 60km/h
-        self.ego_vehicle.set_target_velocity(carla.Vector3D(0, -random_ego_velocity, 0))
-        self.leader_vehicle.set_target_velocity(carla.Vector3D(0, -random_leader_velocity, 0))
+        self.ego_vehicle.set_target_velocity(carla.Vector3D(random_ego_velocity*math.cos(self.spawn_yaw), random_ego_velocity*math.sin(self.spawn_yaw), 0))
+        self.leader_vehicle.set_target_velocity(carla.Vector3D(random_leader_velocity*math.cos(self.spawn_yaw), random_leader_velocity*math.sin(self.spawn_yaw),0))
         
         # Wait for simulation to progress
         self.world.tick()
@@ -162,7 +164,7 @@ class AccEnv(gym.Env):
         relative_speed = self.radar_data["relative_speed"]
         object_detected = self.radar_data["object_detected"]
         
-
+        ego_speed = self.ego_vehicle.get_velocity().length()
         ego_speed = np.linalg.norm([
             self.ego_vehicle.get_velocity().x,
             self.ego_vehicle.get_velocity().y,
@@ -171,6 +173,7 @@ class AccEnv(gym.Env):
 
         return np.array([distance, abs(ego_speed), relative_speed, self.TARGET_SPEED, object_detected], dtype=np.float32)
 
+    #TODO: Reward min -1, reward max 1
     def _compute_reward(self, observation):
         distance, ego_speed, relative_speed, target_speed, object_detected = observation # Leader speed is relative to ego vehicle
         
@@ -213,7 +216,7 @@ class AccEnv(gym.Env):
             if distance < 1:
                 reward -= 1
             
-        return max(-10, reward)
+        return max(-1, reward)
 
 
 
