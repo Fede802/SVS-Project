@@ -5,7 +5,8 @@ from collections import deque
 import carla_utility, time
 
 class PID:
-    def __init__(self, buffer_size, kp=0.2, ki=0.0, kd=0.0):
+    def __init__(self, learning_rate, buffer_size, kp=0.2, ki=0.0, kd=0.0):
+        self.learning_rate = learning_rate
         self.kp = kp
         self.ki = ki
         self.kd = kd
@@ -30,14 +31,19 @@ class PID:
             self.dt = time.time() - self.dt    
             ie = np.sum(self.e_buffer) * self.dt
             de = (self.e_buffer[-1] - self.e_buffer[-2]) / self.dt #don't needed -> if len(self.e_buffer) > 1 else 0.0
+            self.ki += self.learning_rate * np.sum(self.e_buffer)
+            self.kd += self.learning_rate * de
+
+        self.kp += self.learning_rate * e
+        
 
         return np.clip((self.kp * e) + (self.kd * de) + (self.ki * ie), 0.0, 1.0)
     
 class PIDController:
-    def __init__(self, min_distance_offset, buffer_size = 2, kp_velocity = 0.2, ki_velocity = 0.2, kd_velocity = 0.01, 
+    def __init__(self, learning_rate, min_distance_offset, buffer_size = 2, kp_velocity = 0.4, ki_velocity = 0.2, kd_velocity = 0.01, 
                 kp_distance = 1.6, ki_distance = 0.01, kd_distance = 0.7):
-        self.pid_velocity = PID(buffer_size, kp_velocity, ki_velocity, kd_velocity)
-        self.pid_distance = PID(buffer_size, kp_distance, ki_distance, kd_distance)
+        self.pid_velocity = PID(learning_rate, buffer_size, kp_velocity, ki_velocity, kd_velocity)
+        self.pid_distance = PID(learning_rate, buffer_size, kp_distance, ki_distance, kd_distance)
         self.min_distance_offset = min_distance_offset
 
     def apply_control(self, control_info, target_velocity, current_velocity, min_depth):
