@@ -5,6 +5,7 @@ from env.env import AccEnv
 # Trained environment
 env = AccEnv()
 
+env.reset()
 
 # Initialize the PPO model
 model = PPO(
@@ -17,7 +18,7 @@ model = PPO(
     batch_size=64,  # Batch size for training
     ent_coef=0.01,  # Entropy coefficient
     n_epochs=100,
-    tensorboard_log="./log"
+    #tensorboard_log="./log"
     
 )
 # Train the PPO model

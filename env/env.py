@@ -9,28 +9,30 @@ import debug_utility
 class AccEnv(gym.Env):
     
     TARGET_SPEED = 16.6667 #60 km/h
-    MAX_RELATIVE_SPEED = 100
+    SPAWN_POINT = carla.Location(x=2393, y=6000, z=167)
 
     def __init__(self):
         super(AccEnv, self).__init__()
 
         #Set up the CARLA client
         self.client = carla.Client('localhost', 2000)
-        self.client.set_timeout(10.0)
-        self.world = self.client.load_world('Town04')
+        self.client.set_timeout(100.0)
+        self.world = self.client.get_world()
+        self.spectator = self.world.get_spectator()
+        self.spectator.set_transform(carla.Transform(self.SPAWN_POINT, carla.Rotation(yaw = -88.2)))
 
         #Define the action for ego vehicle [throttle, break]
         self.action_space = spaces.Box(
             low=np.array([0.0, 0.0]), # [min(throttle), min(break)]
             high=np.array([1.0, 1.0]), # [max(throttle), max(break)]
-            dtype=np.float32
+            dtype=np.float64
         )
 
         #Define the observation space
         self.observation_space = spaces.Box(
             low=np.array([0.0, 0.0, -30.0, self.TARGET_SPEED, 0]), # [min(distance), min(ego_speed), min(relative_speed), target_speed, object detected] in m/s
             high=np.array([50, 30.0, 30.0, self.TARGET_SPEED, 1]), # [max(distance, max(ego_speed), max(relative_speed), target_speed, object detected] in m/s
-            dtype=np.float32
+            dtype=np.float64
         )
 
         #Configure the default vehicle 
@@ -50,16 +52,16 @@ class AccEnv(gym.Env):
 
 
     def spawn_vehicles(self):
-        spawn_point_leader = self.spawn_points[1]
+        spawn_point_leader = carla.Transform(self.SPAWN_POINT, carla.Rotation(yaw = -88.2))
         self.leader_vehicle = self.world.spawn_actor(self.vehicle_bp, spawn_point_leader)
 
         # Spawn point ego vehicle at random position
         random_distance = rnd.uniform(50.00, 100.0)
 
         ego_vehicle = carla.Location(
-            x = spawn_point_leader.location.x - random_distance,
-            y = spawn_point_leader.location.y,
-            z = spawn_point_leader.location.z
+            x = self.SPAWN_POINT.x - 1,
+            y = self.SPAWN_POINT.y + 50.0,
+            z = self.SPAWN_POINT.z
         )
 
         #print("Ego spawned at")
@@ -104,8 +106,8 @@ class AccEnv(gym.Env):
         # Reset vehicle state
         random_ego_velocity = rnd.uniform(9.0, self.TARGET_SPEED) # ~ min: 32,4km/h max: 60km/h
         random_leader_velocity = rnd.uniform(9.0, self.TARGET_SPEED + 5) # ~ min: 32,4km/h max: 60km/h
-        self.ego_vehicle.set_target_velocity(carla.Vector3D(random_ego_velocity, 0, 0))
-        self.leader_vehicle.set_target_velocity(carla.Vector3D(random_leader_velocity, 0, 0))
+        self.ego_vehicle.set_target_velocity(carla.Vector3D(0, -random_ego_velocity, 0))
+        self.leader_vehicle.set_target_velocity(carla.Vector3D(0, -random_leader_velocity, 0))
         
         # Wait for simulation to progress
         self.world.tick()
@@ -148,6 +150,8 @@ class AccEnv(gym.Env):
         observation = self._get_observation()
         reward = self._compute_reward(observation)
         done = self._check_done(observation)
+
+        print(f"Reward: {reward}")
         
 
         return observation, reward, done, False, {}
