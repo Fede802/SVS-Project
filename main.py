@@ -1,11 +1,13 @@
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), 'utility'))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'mqtt_service'))
+
 import carla, time, pygame, cv2, debug_utility, carla_utility
+from log_utility import Logger
 import numpy as np
 from server import start_servers, send_data, close_servers
-from collections import deque
 from pid_controller import PIDController
 from manual_control import compute_control, ControlInfo
-from log_utility import Logger
-
 
 send_info = True
 save_info = True
