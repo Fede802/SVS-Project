@@ -34,7 +34,7 @@ def plot_last_run():
     plt.tight_layout()
     plt.show() 
 
-def custom_plot(*plot_files, log_dir = "logs"):
+def custom_plot(*plot_files, names, log_dir = "logs"):
 
     velocities = []
     accelerations = []
@@ -61,10 +61,10 @@ def custom_plot(*plot_files, log_dir = "logs"):
 
     for i in range(len(velocities)):
         random_color = (random.random(), random.random(), random.random())
-        axs[0,0].plot(x, velocities[i], label='log_'+str(i+1), color=random_color)
-        axs[0,1].plot(x, accelerations[i], label='log_'+str(i+1), color=random_color)
-        axs[1,0].plot(x, throttles[i], label='log_'+str(i+1), marker='o', color=random_color)
-        axs[1,1].plot(x, brakes[i], label='log_'+str(i+1), marker='o', color=random_color)
+        axs[0,0].plot(x, velocities[i], label=names[i], color=random_color)
+        axs[0,1].plot(x, accelerations[i], label=names[i], color=random_color)
+        axs[1,0].plot(x, throttles[i], label=names[i], marker='o', color=random_color)
+        axs[1,1].plot(x, brakes[i], label=names[i], marker='o', color=random_color)
 
     axs[0,0].legend()
     axs[0,0].grid(True)
@@ -75,9 +75,10 @@ def custom_plot(*plot_files, log_dir = "logs"):
     axs[1,1].legend()
     axs[1,1].grid(True)
 
+    plt.title("PID Controller Comparison - 36m/s")
     plt.tight_layout()
     plt.show()
 
 if __name__ == "__main__":
     random.seed(42)
-    custom_plot("log_1.txt", "log_2.txt", "log_3.txt", "log_4.txt")    
+    custom_plot("log_29.txt", "log_26.txt", "log_27.txt", "log_28.txt", names=["Random-Adaptive", "Random", "Scheduled-Adaptive", "Scheduled"])    

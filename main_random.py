@@ -10,9 +10,9 @@ from pid_controller_random import PIDController
 from manual_control import compute_control, ControlInfo
 import plot_utility
 
-send_info = True
+send_info = False
 save_info = True
-show_log = True
+show_log = False
 show_in_carla = False
 show_in_camera = True
 pid_cc = True
@@ -23,7 +23,7 @@ radar_detection_v_radius = 0.8
 max_target_velocity = 130
 radar_range_offset = 20
 radar_range = carla_utility.compute_security_distance(max_target_velocity) + radar_range_offset
-target_velocity = 90
+target_velocity = 90 / 3.6
 min_distance_offset = 7
 min_permitted_distance = min_distance_offset
 
@@ -65,14 +65,14 @@ radar = carla_utility.spawn_radar(world, ego_vehicle, range=radar_range)
 radar.listen(lambda data: radar_callback(data, radar))
 carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
 
-other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
+# other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
 
 if show_in_camera:
     camera = carla_utility.spawn_camera(world=world, attach_to=ego_vehicle, transform=carla.Transform(carla.Location(x=-6, z=5), carla.Rotation(pitch=-30)))
     camera.listen(lambda image: camera_callback(image))
     cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
 
-pid_controller = PIDController(min_distance_offset) #add buffer_size = None to disable buffer
+pid_controller = PIDController(min_distance_offset, buffer_size=None) #add buffer_size = None to disable buffer
 control_info = ControlInfo(pid_cc)
 logger = Logger()
 lastUpdate = 0
@@ -82,7 +82,7 @@ try:
         # debug_utility.draw_radar_bounding_range(radar)
         # debug_utility.draw_radar_point_cloud_range(radar, radar_detection_h_radius, radar_detection_v_radius)
         if control_info.pid_cc:
-            pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth) 
+            pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length(), min_depth) 
         if(time.time() - lastUpdate > update_frequency):           
             if send_info:
                 send_data({"velocity": ego_vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.get_acceleration().length()})
@@ -99,7 +99,7 @@ try:
 
         # print(ego_vehicle.get_velocity().length()*3.6)
         ego_vehicle.apply_control(control_info.ego_control)
-        other_vehicle.apply_control(control_info.target_control)
+        # other_vehicle.apply_control(control_info.target_control)
         pygame.display.flip()
         world.tick()
 except KeyboardInterrupt:
