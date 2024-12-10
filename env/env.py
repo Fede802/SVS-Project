@@ -9,7 +9,7 @@ import math
 
 class AccEnv(gym.Env):
     
-    TARGET_SPEED = 16.6667 #60 km/h
+    TARGET_SPEED = 90 #90 km/h
     SPAWN_POINT = carla.Location(x=2393, y=6000, z=167)
     SPAWN_YAW = -88.2
     VEHICLE_BP = 'vehicle.tesla.model3'
@@ -22,17 +22,17 @@ class AccEnv(gym.Env):
         self.client.set_timeout(100.0)
         self.world = self.client.get_world()
         
-        #TODO: Refactor Spectator
         self.spectator = self.world.get_spectator()
-        self.spectator.set_transform(carla.Transform(self.SPAWN_POINT, carla.Rotation(yaw = self.SPAWN_YAW)))
 
         #Define the action for ego vehicle [throttle, break]
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float64)
 
         #Define the observation space
         self.observation_space = spaces.Box(
-            low=np.array([0.0, 0.0, 0.0, -30.0, 0, 1]), # [min(distance), min(ego_speed), min(leader_speed), min(relative_speed), object detected, security_distance] in m/s
-            high=np.array([50, 30.0, 30.0, 30.0, 1, 100]), # [max(distance, max(ego_speed), max(leader_speed), max(relative_speed), object detected, security_distance] in m/s
+            # [min(ttc), min(ego_speed), min(leader_speed), security_distance] in km/h
+            low=np.array([0.0, 0.0, 0]),
+            # [max(ttc), max(ego_speed), max(leader_speed), security_distance] in km/h
+            high=np.array([np.inf, 130.0, 170]),
             dtype=np.float64
         )
 
@@ -41,22 +41,26 @@ class AccEnv(gym.Env):
         self.radar_sensor = None
 
         self.radar_data = {  # Default radar data
-            "distance": 50,  # Default distance if no object is detected
-            "relative_speed": 0.0,  # Default relative speed
-            "object_detected": 0
+            "ttc": np.inf,  # Default distance if no object is detected
         }
-
 
     def spawn_vehicles(self):
         #Spawn Ego Veichle
         spawn_point_ego = carla.Transform(self.SPAWN_POINT, carla.Rotation(yaw = self.SPAWN_YAW))
         self.ego_vehicle = utility.spawn_vehicle_bp_at(world=self.world, vehicle=self.VEHICLE_BP, spawn_point=spawn_point_ego)
+        utility.move_spectator_to(self.spectator, self.ego_vehicle.get_transform())
 
         # Spawn point ego vehicle at random position
-        random_distance = rnd.uniform(50.00, 100.0)
+        random_distance = np.random.randint(50, 100)
         
         #Spawn Leader Veichle
         self.leader_vehicle = utility.spawn_vehicle_bp_in_front_of(self.world, self.ego_vehicle, self.VEHICLE_BP, offset=random_distance)
+        
+        # Reset vehicle state
+        #random_ego_velocity = (self.TARGET_SPEED - 1) * np.random.sample() + 1
+        #random_leader_velocity = (self.TARGET_SPEED - 1) * np.random.sample() + 1
+        self.ego_vehicle.set_target_velocity(carla.Vector3D(0*math.cos(self.SPAWN_YAW), self.TARGET_SPEED*math.sin(self.SPAWN_YAW), 0))
+        self.leader_vehicle.set_target_velocity(carla.Vector3D(0*math.cos(self.SPAWN_YAW), self.TARGET_SPEED*math.sin(self.SPAWN_YAW),0))
 
 
     
@@ -70,16 +74,13 @@ class AccEnv(gym.Env):
         self.spawn_vehicles()
 
         #Add radar sensor
-        self.radar_sensor = utility.spawn_radar(world=self.world, attach_to=self.ego_vehicle, transform=carla.Transform(carla.Location(x=2.5, z=1.0), carla.Rotation(pitch=0)), range=50, vertical_fov=5, horizontal_fov=5)
+        radar_range_offset = 20
+        radar_offset = 180
+        self.radar_sensor = utility.spawn_radar(world=self.world, attach_to=self.ego_vehicle, transform=carla.Transform(carla.Location(x=2.5, z=1.0), carla.Rotation(pitch=0)), range=radar_offset)
 
         # Get data from radar sensor
         self.radar_sensor.listen(self._radar_callback)
 
-        # Reset vehicle state
-        random_ego_velocity = rnd.uniform(self.TARGET_SPEED - 5, self.TARGET_SPEED + 5)
-        random_leader_velocity = rnd.uniform(self.TARGET_SPEED - 5, self.TARGET_SPEED + 5)
-        self.ego_vehicle.set_target_velocity(carla.Vector3D(random_ego_velocity*math.cos(self.SPAWN_YAW), random_ego_velocity*math.sin(self.SPAWN_YAW), 0))
-        self.leader_vehicle.set_target_velocity(carla.Vector3D(random_leader_velocity*math.cos(self.SPAWN_YAW), random_leader_velocity*math.sin(self.SPAWN_YAW),0))
         
         # Wait for simulation to progress
         self.world.tick()
@@ -92,19 +93,16 @@ class AccEnv(gym.Env):
         velocities = []
 
         for detection in radar_data:
-            debug_utility.draw_radar_point(self.radar_sensor, detection)
-            distances.append(detection.depth) #Distance to detect object
-            velocities.append(detection.velocity) #Velocity of detect object
+            if debug_utility.evaluate_point(self.radar_sensor, detection, 1, 0.8):
+                debug_utility.draw_radar_point(self.radar_sensor, detection)
+                distances.append(detection.depth) #Distance to detect object
+                velocities.append(detection.velocity) #Velocity of detect object
         
         # Use the closest detected object as the relevant one for control
         if distances:
-            self.radar_data["distance"] = min(distances)
-            self.radar_data["relative_speed"] = velocities[np.argmin(distances)]
-            self.radar_data["object_detected"] = 1
+            self.radar_data["ttc"] = min(distances) / max(0.1, abs(velocities[np.argmin(distances)])) 
         else:
-            self.radar_data["distance"] = 50.0
-            self.radar_data["relative_speed"] = 0.0
-            self.radar_data["object_detected"] = 0
+            self.radar_data["ttc"] = np.inf
         
     def step(self, action):
         
@@ -116,9 +114,6 @@ class AccEnv(gym.Env):
         else:
             brake = abs(action_value)
             throttle = 0.0
-        
-        throttle = np.clip(throttle, 0.0, 1.0)
-        brake = np.clip(brake, 0.0, 1.0)
 
         # Apply action to throttle and brake
         control = carla.VehicleControl()
@@ -139,43 +134,41 @@ class AccEnv(gym.Env):
     
     def _get_observation(self):
         
-        distance = abs(self.radar_data["distance"])
-        relative_speed = self.radar_data["relative_speed"]
-        object_detected = self.radar_data["object_detected"]
-        
+        ttc = self.radar_data["ttc"]
         ego_speed = self.ego_vehicle.get_velocity().length()
-        leader_speed = abs(ego_speed - relative_speed)
+        
         security_distance = utility.compute_security_distance(ego_speed)
         
-        return np.array([distance, abs(ego_speed), abs(leader_speed), relative_speed, object_detected, security_distance], dtype=np.float64)
+        print(f"ttc: {ttc}, ego_speed: {ego_speed} km/h, security_distance: {security_distance}")
+        
+        return np.array([ttc, abs(ego_speed), security_distance], dtype=np.float64)
 
  
     def _compute_reward(self, observation):
-        distance, ego_speed, leader_speed, relative_speed, object_detected, security_distance = observation
+        ttc, ego_speed, _ = observation
         
         reward = 0
         
-        if distance < 1:
+        if self.TARGET_SPEED - 1 <= ego_speed <= self.TARGET_SPEED + 1: #Okay target speed
+            reward += 1
+        else:
             reward -= 1
+            
+        if ttc > 2.5:
+            reward += 0.1 * (ttc)
+        else:
+            reward -= 0.5 * (ttc)
         
-        if ego_speed < 0.1:
-            reward -= 0.5
-        
-        speed_error = abs(ego_speed - self.TARGET_SPEED)
-        reward += 1 - abs(speed_error / self.TARGET_SPEED)
-        
-        if object_detected == 1 and distance < security_distance:
-            reward -= 1 * (security_distance - distance) / security_distance
         
         return np.clip(reward, -1, 1)
 
 
 
     def _check_done(self, observation):
-        distance, ego_speed, leader_speed, relative_speed, object_detected, security_distance = observation
+        ttc, ego_speed, _ = observation
 
         # Collision Detected
-        if object_detected == 1 and distance <= 1:
+        if ttc < 1.0:
             print("Collision")
             return True
         
