@@ -1,6 +1,5 @@
-import math
+import math, carla
 import numpy as np
-import carla
 
 def __to_np(v3d: carla.Vector3D):
     return np.array([v3d.x, v3d.y, v3d.z])

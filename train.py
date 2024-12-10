@@ -1,6 +1,8 @@
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), 'utility'))
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import VecMonitor, SubprocVecEnv
-from env import AccEnv
+from env.env import AccEnv
 
 
 

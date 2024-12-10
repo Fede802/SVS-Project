@@ -1,10 +1,5 @@
-import time
-import random
-import json
+import json, threading, http.server, socketserver
 import paho.mqtt.client as mqtt
-import threading
-import http.server
-import socketserver
 
 # Configurazione MQTT
 BROKER = "localhost"
@@ -13,9 +8,15 @@ PORT = 1883           # Porta del broker MQTT
 TOPIC = "grafico/dati/sdahfkjhdkjfhals"  # Topic MQTT su cui pubblicare
 client = mqtt.Client()
 
+class CustomHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/':
+            self.path = 'index.html'
+        return http.server.SimpleHTTPRequestHandler.do_GET(self)
+    
 # Funzione per avviare il server HTTP
 def start_http_server():
-    handler = http.server.SimpleHTTPRequestHandler
+    handler = CustomHttpRequestHandler
     with socketserver.TCPServer(("0.0.0.0", 8000), handler) as httpd:
         print("Server HTTP avviato sulla porta 8000")
         httpd.serve_forever()

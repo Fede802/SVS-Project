@@ -1,0 +1,12 @@
+log 1-4 -> Buffer 2, 90kmh
+log 5-8 -> B 2, 110kmh
+log 9-12 -> B2, 130kmh
+log 13-16 -> B2, 150kmh
+log 17-20 -> B2, 70kmh
+log 21-24 -> B2, 25ms
+log 25-28 -> B2, 36ms
+log 29-32 -> B42, 130kmh
+log 33-36 -> B42, 110kmh
+log 37-40 -> B42, 90kmh
+log 41-44 -> BN, 90kmh
+log 45-48 -> BN, 25ms
