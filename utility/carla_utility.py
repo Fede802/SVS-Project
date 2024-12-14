@@ -71,7 +71,7 @@ def destroy_all_vehicle_and_sensors(world: carla.World):
     time.sleep(2)    
 
 def __setup_spectactor(spectator, spawn_point: carla.Transform):
-    if math_utility.sub(spectator.get_location(), spawn_point.location).length() > 1000:
+    if math_utility.sub(spectator.get_location(), spawn_point.location).length() > 500:
         spectator.set_transform(spawn_point)
         time.sleep(10)
 

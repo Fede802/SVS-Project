@@ -25,9 +25,9 @@ class AccEnv(gym.Env):
 
         #Define the action for ego vehicle [throttle, break]
         self.action_space = spaces.Box(
-            low=np.array([0.0, 0.0]), # [min(throttle), min(break)]
-            high=np.array([1.0, 1.0]), # [max(throttle), max(break)]
-            dtype=np.float32
+            low=-1.0, # [min(throttle), min(break)]
+            high=1.0, # [max(throttle), max(break)]
+            dtype=float
         )
         #add security distance?
         #Define the observation space
