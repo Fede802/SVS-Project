@@ -2,13 +2,13 @@ import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'utility'))
 sys.path.append(os.path.join(os.path.dirname(__file__), 'mqtt_service'))
 
-import carla, time, pygame, cv2, debug_utility, carla_utility
-from log_utility import Logger
+import carla, time, pygame, cv2, debug_utility, carla_utility # type: ignore
+from log_utility import Logger # type: ignore
 import numpy as np
-from server import start_servers, send_data, close_servers
+from server import start_servers, send_data, close_servers # type: ignore
 from pid_controller_scheduled_adaptive import PIDController
-from manual_control import compute_control, ControlInfo
-import plot_utility
+from manual_control import compute_control, ControlInfo, DualControl, HUD, CollisionSensor, World
+import plot_utility # type: ignore
 
 send_info = False
 save_info = True
@@ -34,8 +34,16 @@ if send_info:
 client = carla.Client('localhost', 2000)
 client.set_timeout(100.0)
 spawn_point = carla.Transform(carla.Location(x=2388, y=6164, z=187), carla.Rotation(yaw = -88.2))
-world = client.get_world()
-spectator = world.get_spectator()
+pygame.init()
+pygame.font.init()
+pygame.display.set_mode((400, 300))
+display = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
+hud = HUD(1280, 720)
+world = World(client.get_world(), hud, "vehicle.*")
+controller = DualControl(world, False)
+
+clock = pygame.time.Clock()
+spectator = world.world.get_spectator()
 
 carla_utility.destroy_all_vehicle_and_sensors(world) #to avoid spawning bugs
 
@@ -58,8 +66,7 @@ def radar_callback(data: carla.RadarMeasurement, radar: carla.Actor):
             if detection.depth < min_depth:
                 min_depth = detection.depth
 
-pygame.init()
-pygame.display.set_mode((400, 300))
+
 
 ego_vehicle = carla_utility.spawn_vehicle_bp_at(world=world, vehicle='vehicle.tesla.cybertruck', spawn_point=spawn_point)
 radar = carla_utility.spawn_radar(world, ego_vehicle, range=radar_range)
@@ -92,7 +99,9 @@ try:
                 logger.write(str(ego_vehicle.get_velocity().length() * 3.6)+ "," + str(ego_vehicle.get_acceleration().length())+ "," +str(control_info.ego_control.throttle)+ "," +str(control_info.ego_control.brake))
             lastUpdate = time.time()
 
-        compute_control(control_info)
+        clock.tick_busy_loop(120)
+        controller.parse_events(world, clock, control_info)
+        # compute_control(control_info)
 
         if show_in_carla:
             carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
