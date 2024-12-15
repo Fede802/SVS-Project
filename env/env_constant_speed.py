@@ -33,8 +33,8 @@ class AccEnvConstantSpeed(gym.Env):
         #add security distance?
         #Define the observation space
         self.observation_space = spaces.Box(
-            low=np.array([30.0, 0.0, -1.0, -1.0]), # [terget, vel, err vel, last err vel] in m/s
-            high=np.array([150.0, 300.0, 1.0, 1.0]),
+            low=np.array([30.0, 0.0]), # [terget, vel, err vel, last err vel] in m/s
+            high=np.array([150.0, 300.0]),
             dtype=np.float32
         )
 
@@ -72,7 +72,7 @@ class AccEnvConstantSpeed(gym.Env):
         # Reset vehicle state
         random_ego_velocity = rnd.randint(0, 180) # ~ min: 32,4km/h max: 60km/h
 
-        self.TARGET_SPEED = rnd.randint(30, 150)
+        # self.TARGET_SPEED = rnd.randint(30, 150)
         
         self.last_error = (self.TARGET_SPEED - (random_ego_velocity))/self.TARGET_SPEED
         random_ego_velocity = random_ego_velocity / 3.6
@@ -129,29 +129,30 @@ class AccEnvConstantSpeed(gym.Env):
         error_speed = (self.TARGET_SPEED - ego_speed)/self.TARGET_SPEED
         last_error = self.last_error
         self.last_error = error_speed
-        return error_speed, last_error, self.TARGET_SPEED, ego_speed #np.array([distance, ego_speed, relative_speed, object_detected], dtype=np.float32)
+        return self.TARGET_SPEED, ego_speed #np.array([distance, ego_speed, relative_speed, object_detected], dtype=np.float32)
 
     def _compute_reward(self, observation):
-        if observation[0] < -0.1:
-            error_reward = -10 * abs(observation[0])
-        elif observation[0] < -0.01:
-            error_reward = -3 * abs(observation[0])    
-        elif observation[0] < 0.01:
-            error_reward = -1 * abs(observation[0]) 
-        elif observation[0] < 0.05:
-            error_reward = -2 * abs(observation[0]) 
-        elif observation[0] < 0.1:
-            error_reward = -3 * abs(observation[0]) 
-        elif observation[0] < 0.2:
-            error_reward = -4 * abs(observation[0]) 
-        elif observation[0] < 0.5:
-            error_reward = -5 * abs(observation[0] )
-        else:
-            error_reward = -3 * abs(observation[0]) 
-        if (abs(observation[0] )> abs(observation[1])):
-            error_reward -= 1 * (abs(observation[0]) - abs(observation[1]))
+        return -abs(observation[0] - observation[1])/10# Leader speed is relative to ego vehicle
+        # if observation[0] < -0.1:
+        #     error_reward = -10 * abs(observation[0])
+        # elif observation[0] < -0.01:
+        #     error_reward = -3 * abs(observation[0])    
+        # elif observation[0] < 0.01:
+        #     error_reward = -1 * abs(observation[0]) 
+        # elif observation[0] < 0.05:
+        #     error_reward = -2 * abs(observation[0]) 
+        # elif observation[0] < 0.1:
+        #     error_reward = -3 * abs(observation[0]) 
+        # elif observation[0] < 0.2:
+        #     error_reward = -4 * abs(observation[0]) 
+        # elif observation[0] < 0.5:
+        #     error_reward = -5 * abs(observation[0] )
+        # else:
+        #     error_reward = -3 * abs(observation[0]) 
+        # if (abs(observation[0] )> abs(observation[1])):
+        #     error_reward -= 1 * (abs(observation[0]) - abs(observation[1]))
 
-        return error_reward# Leader speed is relative to ego vehicle
+        # return error_reward# Leader speed is relative to ego vehicle
         # distance, ego_speed, relative_speed, object_detected = observation # Leader speed is relative to ego vehicle
         
         # security_distance = (ego_speed // 10) ** 2

@@ -38,8 +38,8 @@ env = AccEnvConstantSpeed()
 
 
 # Save the final model
-# env.setTargetSpeed(70)
-trainedModel = PPO.load("ppo_carla_model", env=env)
+env.setTargetSpeed(110)
+trainedModel = PPO.load("best_model", env=env)
 # trainedModel.get_env()
 obs = trainedModel.get_env().reset()
 # obs[0][2] = 110.0
