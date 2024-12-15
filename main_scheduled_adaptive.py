@@ -39,6 +39,8 @@ pygame.font.init()
 pygame.display.set_mode((400, 300))
 display = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
 hud = HUD(1280, 720)
+pid_controller = PIDController(learning_rate, update_frequency, buffer_size=None) #add buffer_size = None to disable buffer
+control_info = ControlInfo(pid_cc, min_permitted_offset=min_distance_offset)
 world = World(client.get_world(), hud, "vehicle.*")
 controller = DualControl(world, False)
 
@@ -80,8 +82,7 @@ if show_in_camera:
     camera.listen(lambda image: camera_callback(image))
     cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
 
-pid_controller = PIDController(learning_rate, update_frequency, buffer_size=None) #add buffer_size = None to disable buffer
-control_info = ControlInfo(pid_cc, min_permitted_offset=min_distance_offset)
+
 logger = Logger()
 lastUpdate = 0
 
