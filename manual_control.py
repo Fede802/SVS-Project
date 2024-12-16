@@ -148,9 +148,8 @@ def get_actor_display_name(actor, truncate=250):
 
 
 class World(object):
-    def __init__(self, carla_world, hud, actor_filter, control_info):
+    def __init__(self, carla_world, actor_filter, control_info):
         self.world = carla_world
-        self.hud = hud
         self.player = None
         self.collision_sensor = None
         self.control_info = control_info
@@ -161,7 +160,7 @@ class World(object):
         self._weather_index = 0
         self._actor_filter = actor_filter
         self.restart()
-        self.world.on_tick(hud.on_world_tick)
+        # self.world.on_tick(hud.on_world_tick)
 
     def restart(self):
         # Keep same camera config if the camera manager exists.
@@ -186,14 +185,14 @@ class World(object):
             spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         # Set up the sensors.
-        self.collision_sensor = CollisionSensor(self.player, self.hud)
+        # self.collision_sensor = CollisionSensor(self.player, self.hud)
         # self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
         # self.gnss_sensor = GnssSensor(self.player)
         # self.camera_manager = CameraManager(self.player, self.hud)
         # self.camera_manager.transform_index = cam_pos_index
         # self.camera_manager.set_sensor(cam_index, notify=False)
         actor_type = get_actor_display_name(self.player)
-        self.hud.notification(actor_type)
+        # self.hud.notification(actor_type)
 
     def next_weather(self, reverse=False):
         self._weather_index += -1 if reverse else 1
@@ -211,8 +210,8 @@ class World(object):
 
     def destroy(self):
         sensors = [
-            self.camera_manager.sensor,
-            self.collision_sensor.sensor,
+            # self.camera_manager.sensor,
+            # self.collision_sensor.sensor,
             # self.lane_invasion_sensor.sensor,
             # self.gnss_sensor.sensor
             ]
@@ -241,7 +240,7 @@ class DualControl(object):
         else:
             raise NotImplementedError("Actor type not supported")
         self._steer_cache = 0.0
-        world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
+       
 
         # initialize steering wheel
         pygame.joystick.init()

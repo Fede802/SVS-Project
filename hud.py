@@ -1,6 +1,6 @@
 import os, pygame, math, datetime, carla
 
-from manual_control import get_actor_display_name
+import manual_control
 # ==============================================================================
 # -- HUD -----------------------------------------------------------------------
 # ==============================================================================
@@ -51,7 +51,7 @@ class HUD(object):
             'Server:  % 16.0f FPS' % self.server_fps,
             'Client:  % 16.0f FPS' % clock.get_fps(),
             '',
-            'Vehicle: % 20s' % get_actor_display_name(world.player, truncate=20),
+            'Vehicle: % 20s' % manual_control.get_actor_display_name(world.player, truncate=20),
             'Map:     % 20s' % world.world.get_map().name.split('/')[-1],
             'Simulation time: % 12s' % datetime.timedelta(seconds=int(self.simulation_time)),
             '',
@@ -89,7 +89,7 @@ class HUD(object):
             for d, vehicle in sorted(vehicles):
                 if d > 200.0:
                     break
-                vehicle_type = get_actor_display_name(vehicle, truncate=22)
+                vehicle_type = manual_control.get_actor_display_name(vehicle, truncate=22)
                 self._info_text.append('% 4dm %s' % (d, vehicle_type))
 
     def toggle_info(self):

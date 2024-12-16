@@ -243,6 +243,7 @@ class DualControl(object):
 
     def parse_events(self, world, clock):
         for event in pygame.event.get():
+            print(event)
             if event.type == pygame.QUIT:
                 return True
             elif event.type == pygame.JOYBUTTONDOWN:
@@ -781,7 +782,8 @@ def game_loop(args):
 
     try:
         client = carla.Client(args.host, args.port)
-        client.set_timeout(2.0)
+        client.set_timeout(100.0)
+        client.load_world("Town13")
 
         #display = pygame.display.set_mode(
         #    (args.width, args.height),
