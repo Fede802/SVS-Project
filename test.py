@@ -3,14 +3,13 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'utility'))
 import gymnasium.wrappers.atari_preprocessing
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import VecMonitor, SubprocVecEnv
-from env.env import AccEnv
-from env.env_constant_speed import AccEnvConstantSpeed
+from env.env_acc import AccEnv
 import gymnasium 
 
 
 # Trained environment
 # env = AccEnv()
-env = AccEnvConstantSpeed()
+env = AccEnv(42)
 
 # env.reset()
 # env = gymnasium.wrappers.atari_preprocessing.AtariPreprocessing(env, frame_skip = 4)
@@ -38,8 +37,8 @@ env = AccEnvConstantSpeed()
 
 
 # Save the final model
-env.setTargetSpeed(110)
-trainedModel = PPO.load("best_model", env=env)
+# env.setTargetSpeed(110)
+trainedModel = PPO.load("best_model_test_acc1", env=env)
 # trainedModel.get_env()
 obs = trainedModel.get_env().reset()
 # obs[0][2] = 110.0
