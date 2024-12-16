@@ -29,6 +29,10 @@ from __future__ import print_function
 import glob
 import os
 import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), 'utility'))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'mqtt_service'))
+
+import carla_utility # type: ignore
 
 try:
     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
@@ -105,12 +109,13 @@ except ImportError:
 
 
 class ControlInfo:
-    def __init__(self, pid_cc=False, ego_control=carla.VehicleControl(), target_control=carla.VehicleControl(), min_permitted_offset=7):
+    def __init__(self, pid_cc=False, ego_control=carla.VehicleControl(), target_control=carla.VehicleControl(), min_permitted_offset=7, target_velocity=90):
         self.pid_cc = pid_cc
         self.ego_control = ego_control
         self.target_control = target_control
         self.running = True
         self.min_permitted_offset = min_permitted_offset
+        self.target_velocity = target_velocity
         
 
     def __str__(self):
@@ -124,6 +129,12 @@ class ControlInfo:
             self.min_permitted_offset += 7
         else:
             self.min_permitted_offset = 7
+
+    def increase_target_velocity(self):
+        self.target_velocity += 10 if self.target_velocity < 130 else 0
+    
+    def decrease_target_velocity(self):
+        self.target_velocity -= 10 if self.target_velocity > 50 else 0
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
@@ -142,6 +153,8 @@ def get_actor_display_name(actor, truncate=250):
     return (name[:truncate - 1] + u'\u2026') if len(name) > truncate else name
 
 
+
+
 # ==============================================================================
 # -- World ---------------------------------------------------------------------
 # ==============================================================================
@@ -155,7 +168,7 @@ class World(object):
         self.control_info = control_info
         # self.lane_invasion_sensor = None
         # self.gnss_sensor = None
-        # self.camera_manager = None 
+        self.camera_manager = None 
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
         self._actor_filter = actor_filter
@@ -164,10 +177,11 @@ class World(object):
 
     def restart(self):
         # Keep same camera config if the camera manager exists.
-        # cam_index = self.camera_manager.index if self.camera_manager is not None else 0
-        # cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0
-        # Get a random blueprint.
-        blueprint = random.choice(self.world.get_blueprint_library().filter(self._actor_filter))
+        cam_index = self.camera_manager.index if self.camera_manager is not None else 0
+        cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0
+        # Get the cybertruck blueprint.
+        blueprint = self.world.get_blueprint_library().find('vehicle.tesla.cybertruck')
+        # blueprint = random.choice(self.world.get_blueprint_library().filter(self._actor_filter))
         blueprint.set_attribute('role_name', 'hero')
         if blueprint.has_attribute('color'):
             color = random.choice(blueprint.get_attribute('color').recommended_values)
@@ -181,18 +195,22 @@ class World(object):
             self.destroy()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
         while self.player is None:
-            spawn_points = self.world.get_map().get_spawn_points()
-            spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
-            self.player = self.world.try_spawn_actor(blueprint, spawn_point)
+            spawn_point = carla.Transform(carla.Location(x=2388, y=6164, z=187), carla.Rotation(yaw = -88.2))
+            self.player = carla_utility.spawn_vehicle_bp_at(world=self.world, vehicle='vehicle.tesla.cybertruck', spawn_point=spawn_point)
+
         # Set up the sensors.
         # self.collision_sensor = CollisionSensor(self.player, self.hud)
         # self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
         # self.gnss_sensor = GnssSensor(self.player)
         # self.camera_manager = CameraManager(self.player, self.hud)
-        # self.camera_manager.transform_index = cam_pos_index
-        # self.camera_manager.set_sensor(cam_index, notify=False)
+        self.camera_manager = CameraManager(self.player, None)
+        self.camera_manager.transform_index = cam_pos_index
+        self.camera_manager.set_sensor(cam_index, notify=False)
         actor_type = get_actor_display_name(self.player)
         # self.hud.notification(actor_type)
+
+    def add_ego_vehicle(self, vehicle):
+        self.player = vehicle
 
     def next_weather(self, reverse=False):
         self._weather_index += -1 if reverse else 1
@@ -202,15 +220,17 @@ class World(object):
         self.player.get_world().set_weather(preset[0])
 
     def tick(self, clock):
-        self.hud.tick(self, clock)
+        # self.hud.tick(self, clock)
+        # TODO: mettere qua l'aggiornamento delle scritte
+        print("DIOCENAE")
 
     def render(self, display):
-        # self.camera_manager.render(display)
-        self.hud.render(display)
+        self.camera_manager.render(display)
+        # self.hud.render(display)
 
     def destroy(self):
         sensors = [
-            # self.camera_manager.sensor,
+            self.camera_manager.sensor,
             # self.collision_sensor.sensor,
             # self.lane_invasion_sensor.sensor,
             # self.gnss_sensor.sensor
@@ -281,11 +301,15 @@ class DualControl(object):
                     self._control.gear = 1 if self._control.reverse else -1
                 # elif event.button == 23:
                 #     world.camera_manager.next_sensor()
-                elif event.button == 22:
+                elif event.button == 10:
                     # TODO: mettere toggle distanza
                     world.control_info.change_distance_offset()
-                elif event.button == 24: # TODO: vabene questo tasto?????
+                elif event.button == 9: 
                     world.control_info.pid_cc = not world.control_info.pid_cc
+                elif event.button == 22:
+                    world.control_info.increase_target_velocity()
+                elif event.button == 21:
+                    world.control_info.decrease_target_velocity()
 
             elif event.type == pygame.KEYUP:
                 if self._is_quit_shortcut(event.key):
@@ -296,18 +320,18 @@ class DualControl(object):
                     world.hud.toggle_info()
                 elif event.key == K_h or (event.key == K_SLASH and pygame.key.get_mods() & KMOD_SHIFT):
                     world.hud.help.toggle()
-                # elif event.key == K_TAB:
-                #     world.camera_manager.toggle_camera()
+                elif event.key == K_TAB:
+                    world.camera_manager.toggle_camera()
                 elif event.key == K_c and pygame.key.get_mods() & KMOD_SHIFT:
                     world.next_weather(reverse=True)
                 elif event.key == K_c:
                     world.next_weather()
-                # elif event.key == K_BACKQUOTE:
-                #     world.camera_manager.next_sensor()
-                # elif event.key > K_0 and event.key <= K_9:
-                #     world.camera_manager.set_sensor(event.key - 1 - K_0)
-                # elif event.key == K_r:
-                #     world.camera_manager.toggle_recording()
+                elif event.key == K_BACKQUOTE:
+                    world.camera_manager.next_sensor()
+                elif event.key > K_0 and event.key <= K_9:
+                    world.camera_manager.set_sensor(event.key - 1 - K_0)
+                elif event.key == K_r:
+                    world.camera_manager.toggle_recording()
                 if isinstance(self._control, carla.VehicleControl):
                     if event.key == K_q:
                         self._control.gear = 1 if self._control.reverse else -1
@@ -412,202 +436,90 @@ class DualControl(object):
         return (key == K_ESCAPE) or (key == K_q and pygame.key.get_mods() & KMOD_CTRL)
 
 
-
-
-
-# ==============================================================================
-# -- CollisionSensor -----------------------------------------------------------
-# ==============================================================================
-
-
-class CollisionSensor(object):
-    def __init__(self, parent_actor, hud):
-        self.sensor = None
-        self.history = []
-        self._parent = parent_actor
-        self.hud = hud
-        world = self._parent.get_world()
-        bp = world.get_blueprint_library().find('sensor.other.collision')
-        self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)
-        # We need to pass the lambda a weak reference to self to avoid circular
-        # reference.
-        weak_self = weakref.ref(self)
-        self.sensor.listen(lambda event: CollisionSensor._on_collision(weak_self, event))
-
-    def get_collision_history(self):
-        history = collections.defaultdict(int)
-        for frame, intensity in self.history:
-            history[frame] += intensity
-        return history
-
-    @staticmethod
-    def _on_collision(weak_self, event):
-        self = weak_self()
-        if not self:
-            return
-        actor_type = get_actor_display_name(event.other_actor)
-        self.hud.notification('Collision with %r' % actor_type)
-        impulse = event.normal_impulse
-        intensity = math.sqrt(impulse.x**2 + impulse.y**2 + impulse.z**2)
-        self.history.append((event.frame, intensity))
-        if len(self.history) > 4000:
-            self.history.pop(0)
-
-
-# ==============================================================================
-# -- LaneInvasionSensor --------------------------------------------------------
-# ==============================================================================
-
-
-# class LaneInvasionSensor(object):
-#     def __init__(self, parent_actor, hud):
-#         self.sensor = None
-#         self._parent = parent_actor
-#         self.hud = hud
-#         world = self._parent.get_world()
-#         bp = world.get_blueprint_library().find('sensor.other.lane_invasion')
-#         self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)
-#         # We need to pass the lambda a weak reference to self to avoid circular
-#         # reference.
-#         weak_self = weakref.ref(self)
-#         self.sensor.listen(lambda event: LaneInvasionSensor._on_invasion(weak_self, event))
-
-#     @staticmethod
-#     def _on_invasion(weak_self, event):
-#         self = weak_self()
-#         if not self:
-#             return
-#         lane_types = set(x.type for x in event.crossed_lane_markings)
-#         text = ['%r' % str(x).split()[-1] for x in lane_types]
-#         self.hud.notification('Crossed line %s' % ' and '.join(text))
-
-# # ==============================================================================
-# # -- GnssSensor --------------------------------------------------------
-# # ==============================================================================
-
-
-# class GnssSensor(object):
-#     def __init__(self, parent_actor):
-#         self.sensor = None
-#         self._parent = parent_actor
-#         self.lat = 0.0
-#         self.lon = 0.0
-#         world = self._parent.get_world()
-#         bp = world.get_blueprint_library().find('sensor.other.gnss')
-#         self.sensor = world.spawn_actor(bp, carla.Transform(carla.Location(x=1.0, z=2.8)), attach_to=self._parent)
-#         # We need to pass the lambda a weak reference to self to avoid circular
-#         # reference.
-#         weak_self = weakref.ref(self)
-#         self.sensor.listen(lambda event: GnssSensor._on_gnss_event(weak_self, event))
-
-#     @staticmethod
-#     def _on_gnss_event(weak_self, event):
-#         self = weak_self()
-#         if not self:
-#             return
-#         self.lat = event.latitude
-#         self.lon = event.longitude
-
-
 # # ==============================================================================
 # # -- CameraManager -------------------------------------------------------------
 # # ==============================================================================
 
 
-# class CameraManager(object):
-#     def __init__(self, parent_actor, hud):
-#         self.sensor = None
-#         self.surface = None
-#         self._parent = parent_actor
-#         self.hud = hud
-#         self.recording = False
-#         self._camera_transforms = [
-#             carla.Transform(carla.Location(x=-5.5, z=2.8), carla.Rotation(pitch=-15)),
-#             carla.Transform(carla.Location(x=1.6, z=1.7))]
-#         self.transform_index = 1
-#         self.sensors = [
-#             ['sensor.camera.rgb', cc.Raw, 'Camera RGB'],
-#             ['sensor.camera.depth', cc.Raw, 'Camera Depth (Raw)'],
-#             ['sensor.camera.depth', cc.Depth, 'Camera Depth (Gray Scale)'],
-#             ['sensor.camera.depth', cc.LogarithmicDepth, 'Camera Depth (Logarithmic Gray Scale)'],
-#             ['sensor.camera.semantic_segmentation', cc.Raw, 'Camera Semantic Segmentation (Raw)'],
-#             ['sensor.camera.semantic_segmentation', cc.CityScapesPalette,
-#                 'Camera Semantic Segmentation (CityScapes Palette)'],
-#             ['sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)']]
-#         world = self._parent.get_world()
-#         bp_library = world.get_blueprint_library()
-#         for item in self.sensors:
-#             bp = bp_library.find(item[0])
-#             if item[0].startswith('sensor.camera'):
-#                 bp.set_attribute('image_size_x', str(hud.dim[0]))
-#                 bp.set_attribute('image_size_y', str(hud.dim[1]))
-#             elif item[0].startswith('sensor.lidar'):
-#                 bp.set_attribute('range', '50')
-#             item.append(bp)
-#         self.index = None
+class CameraManager(object):
+    def __init__(self, parent_actor, hud=None):
+        self.sensor = None
+        self.surface = None
+        self._parent = parent_actor
+        # self.hud = hud
+        self.recording = False
+        self._camera_transforms = [
+            carla.Transform(carla.Location(x=-5.5, z=2.8), carla.Rotation(pitch=-15)),
+            carla.Transform(carla.Location(x=1.6, z=1.7))]
+        self.transform_index = 1
+        self.sensors = [
+            ['sensor.camera.rgb', cc.Raw, 'Camera RGB'],
+            ['sensor.camera.depth', cc.Raw, 'Camera Depth (Raw)'],
+            ['sensor.camera.depth', cc.Depth, 'Camera Depth (Gray Scale)'],
+            ['sensor.camera.depth', cc.LogarithmicDepth, 'Camera Depth (Logarithmic Gray Scale)'],
+            ['sensor.camera.semantic_segmentation', cc.Raw, 'Camera Semantic Segmentation (Raw)'],
+            ['sensor.camera.semantic_segmentation', cc.CityScapesPalette,
+                'Camera Semantic Segmentation (CityScapes Palette)'],
+            ['sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)']]
+        world = self._parent.get_world()
+        bp_library = world.get_blueprint_library()
+        for item in self.sensors:
+            bp = bp_library.find(item[0])
+            # if item[0].startswith('sensor.camera'):
+            #     bp.set_attribute('image_size_x', str(hud.dim[0]))
+            #     bp.set_attribute('image_size_y', str(hud.dim[1]))
+            # elif item[0].startswith('sensor.lidar'):
+            #     bp.set_attribute('range', '50')
+            item.append(bp)
+        self.index = None
 
-#     def toggle_camera(self):
-#         self.transform_index = (self.transform_index + 1) % len(self._camera_transforms)
-#         self.sensor.set_transform(self._camera_transforms[self.transform_index])
+    def toggle_camera(self):
+        self.transform_index = (self.transform_index + 1) % len(self._camera_transforms)
+        self.sensor.set_transform(self._camera_transforms[self.transform_index])
 
-#     def set_sensor(self, index, notify=True):
-#         index = index % len(self.sensors)
-#         needs_respawn = True if self.index is None \
-#             else self.sensors[index][0] != self.sensors[self.index][0]
-#         if needs_respawn:
-#             if self.sensor is not None:
-#                 self.sensor.destroy()
-#                 self.surface = None
-#             self.sensor = self._parent.get_world().spawn_actor(
-#                 self.sensors[index][-1],
-#                 self._camera_transforms[self.transform_index],
-#                 attach_to=self._parent)
-#             # We need to pass the lambda a weak reference to self to avoid
-#             # circular reference.
-#             weak_self = weakref.ref(self)
-#             self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image))
-#         if notify:
-#             self.hud.notification(self.sensors[index][2])
-#         self.index = index
+    def set_sensor(self, index, notify=True):
+        index = index % len(self.sensors)
+        needs_respawn = True if self.index is None \
+            else self.sensors[index][0] != self.sensors[self.index][0]
+        if needs_respawn:
+            if self.sensor is not None:
+                self.sensor.destroy()
+                self.surface = None
+            self.sensor = self._parent.get_world().spawn_actor(
+                self.sensors[index][-1],
+                self._camera_transforms[self.transform_index],
+                attach_to=self._parent)
+            # We need to pass the lambda a weak reference to self to avoid
+            # circular reference.
+            weak_self = weakref.ref(self)
+            self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image))
+        if notify:
+            self.hud.notification(self.sensors[index][2])
+        self.index = index
 
-#     def next_sensor(self):
-#         self.set_sensor(self.index + 1)
+    def next_sensor(self):
+        self.set_sensor(self.index + 1)
 
-#     def toggle_recording(self):
-#         self.recording = not self.recording
-#         self.hud.notification('Recording %s' % ('On' if self.recording else 'Off'))
+    def toggle_recording(self):
+        self.recording = not self.recording
 
-#     def render(self, display):
-#         if self.surface is not None:
-#             display.blit(self.surface, (0, 0))
+    def render(self, display):
+        if self.surface is not None:
+            display.blit(self.surface, (0, 0))
 
-#     @staticmethod
-#     def _parse_image(weak_self, image):
-#         self = weak_self()
-#         if not self:
-#             return
-#         if self.sensors[self.index][0].startswith('sensor.lidar'):
-#             points = np.frombuffer(image.raw_data, dtype=np.dtype('f4'))
-#             points = np.reshape(points, (int(points.shape[0] / 4), 4))
-#             lidar_data = np.array(points[:, :2])
-#             lidar_data *= min(self.hud.dim) / 100.0
-#             lidar_data += (0.5 * self.hud.dim[0], 0.5 * self.hud.dim[1])
-#             lidar_data = np.fabs(lidar_data) # pylint: disable=E1111
-#             lidar_data = lidar_data.astype(np.int32)
-#             lidar_data = np.reshape(lidar_data, (-1, 2))
-#             lidar_img_size = (self.hud.dim[0], self.hud.dim[1], 3)
-#             lidar_img = np.zeros(lidar_img_size)
-#             lidar_img[tuple(lidar_data.T)] = (255, 255, 255)
-#             self.surface = pygame.surfarray.make_surface(lidar_img)
-#         else:
-#             image.convert(self.sensors[self.index][1])
-#             array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
-#             array = np.reshape(array, (image.height, image.width, 4))
-#             array = array[:, :, :3]
-#             array = array[:, :, ::-1]
-#             self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
-#         if self.recording:
-#             image.save_to_disk('_out/%08d' % image.frame)
+    @staticmethod
+    def _parse_image(weak_self, image):
+        self = weak_self()
+        if not self:
+            return
+        image.convert(self.sensors[self.index][1])
+        array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
+        array = np.reshape(array, (image.height, image.width, 4))
+        array = array[:, :, :3]
+        array = array[:, :, ::-1]
+        self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+        if self.recording:
+            image.save_to_disk('_out/%08d' % image.frame)
 
 
 # ==============================================================================

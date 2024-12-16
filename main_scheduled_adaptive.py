@@ -7,7 +7,7 @@ from log_utility import Logger # type: ignore
 import numpy as np
 from server import start_servers, send_data, close_servers # type: ignore
 from pid_controller_scheduled_adaptive import PIDController
-from manual_control import compute_control, ControlInfo, DualControl, CollisionSensor, World
+from manual_control import compute_control, ControlInfo, DualControl, World
 import hud
 import plot_utility # type: ignore
 
@@ -15,7 +15,7 @@ send_info = False
 save_info = True
 show_log = False
 show_in_carla = False
-show_in_camera = True
+show_in_camera = False
 pid_cc = True
 update_frequency = 0.01 #seconds
 
@@ -33,15 +33,16 @@ if send_info:
     start_servers()
 
 client = carla.Client('localhost', 2000)
-client.set_timeout(100.0)
+client.set_timeout(30.0)
+
 spawn_point = carla.Transform(carla.Location(x=2388, y=6164, z=187), carla.Rotation(yaw = -88.2))
 pygame.init()
 pygame.font.init()
-pygame.display.set_mode((400, 300))
+# pygame.display.set_mode((400, 300))
 display = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
 #hud = hud.HUD(1280, 720)
 pid_controller = PIDController(learning_rate, update_frequency, buffer_size=None) #add buffer_size = None to disable buffer
-control_info = ControlInfo(pid_cc, min_permitted_offset=min_distance_offset)
+control_info = ControlInfo(pid_cc, min_permitted_offset=min_distance_offset, target_velocity=target_velocity)
 world = World(client.get_world(), "vehicle.*", control_info)
 controller = DualControl(world, False)
 
@@ -71,15 +72,15 @@ def radar_callback(data: carla.RadarMeasurement, radar: carla.Actor):
 
 
 
-ego_vehicle = carla_utility.spawn_vehicle_bp_at(world=world, vehicle='vehicle.tesla.cybertruck', spawn_point=spawn_point)
-radar = carla_utility.spawn_radar(world, ego_vehicle, range=radar_range)
+ego_vehicle = world.player
+radar = carla_utility.spawn_radar(world.world, ego_vehicle, range=radar_range)
 radar.listen(lambda data: radar_callback(data, radar))
 carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
 
-other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
+other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world.world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
 
 if show_in_camera:
-    camera = carla_utility.spawn_camera(world=world, attach_to=ego_vehicle, transform=carla.Transform(carla.Location(x=-6, z=5), carla.Rotation(pitch=-30)))
+    camera = carla_utility.spawn_camera(world=world.world, attach_to=ego_vehicle, transform=carla.Transform(carla.Location(x=-6, z=5), carla.Rotation(pitch=-30)))
     camera.listen(lambda image: camera_callback(image))
     cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
 
@@ -102,7 +103,7 @@ try:
             lastUpdate = time.time()
 
         clock.tick_busy_loop(120)
-        controller.parse_events(world, clock, control_info)
+        controller.parse_events(world, clock)
         # compute_control(control_info)
 
         if show_in_carla:
@@ -114,7 +115,8 @@ try:
         ego_vehicle.apply_control(control_info.ego_control)
         other_vehicle.apply_control(control_info.target_control)
         pygame.display.flip()
-        world.tick()
+        world.tick(clock=clock)
+        world.render(display)
 except KeyboardInterrupt:
     pass
 finally:
