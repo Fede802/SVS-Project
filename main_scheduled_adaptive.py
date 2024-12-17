@@ -96,15 +96,11 @@ try:
             lastUpdate = time.time()
 
         clock.tick_busy_loop(120)
-        controller.parse_events(world, clock)
+        #controller.parse_events(world, clock)
         print(control_info)
-        # compute_control(control_info)
-
         
 
-        # print(ego_vehicle.get_velocity().length()*3.6)
-        control_info.ego_control.throttle = 1.0
-        control_info.ego_control.brake = 0.0
+ 
         world.apply_control(control_info.ego_control)
         other_vehicle.apply_control(control_info.target_control)
         pygame.display.flip()
