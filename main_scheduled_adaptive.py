@@ -15,7 +15,7 @@ send_info = False
 save_info = True
 show_log = False
 show_in_carla = False
-show_in_camera = False
+
 pid_cc = True
 update_frequency = 0.01 #seconds
 
@@ -43,18 +43,15 @@ display = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
 #hud = hud.HUD(1280, 720)
 pid_controller = PIDController(learning_rate, update_frequency, buffer_size=None) #add buffer_size = None to disable buffer
 control_info = ControlInfo(pid_cc, min_permitted_offset=min_distance_offset, target_velocity=target_velocity)
-world = World(client.get_world(), "vehicle.*", control_info)
-controller = DualControl(world, False)
+world = World(client.get_world(), "vehicle.*")
+controller = DualControl(world, False, control_info)
 
 clock = pygame.time.Clock()
-spectator = world.world.get_spectator()
+# spectator = world.world.get_spectator()
 
 carla_utility.destroy_all_vehicle_and_sensors(world) #to avoid spawning bugs
 
-video_output = np.zeros((600, 800, 4), dtype=np.uint8)
-def camera_callback(image):
-    global video_output
-    video_output = np.reshape(np.copy(image.raw_data), (image.height, image.width, 4))
+
 
 def radar_callback(data: carla.RadarMeasurement, radar: carla.Actor):
     global min_ttc, min_depth
@@ -75,14 +72,11 @@ def radar_callback(data: carla.RadarMeasurement, radar: carla.Actor):
 ego_vehicle = world.player
 radar = carla_utility.spawn_radar(world.world, ego_vehicle, range=radar_range)
 radar.listen(lambda data: radar_callback(data, radar))
-carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
+# carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
 
 other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world.world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
 
-if show_in_camera:
-    camera = carla_utility.spawn_camera(world=world.world, attach_to=ego_vehicle, transform=carla.Transform(carla.Location(x=-6, z=5), carla.Rotation(pitch=-30)))
-    camera.listen(lambda image: camera_callback(image))
-    cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
+
 
 
 logger = Logger()
@@ -93,7 +87,6 @@ try:
         # debug_utility.draw_radar_bounding_range(radar)
         # debug_utility.draw_radar_point_cloud_range(radar, radar_detection_h_radius, radar_detection_v_radius)
         if(time.time() - lastUpdate > update_frequency):
-            print(control_info)
             if control_info.pid_cc:
                 pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth)           
             if send_info:
@@ -104,15 +97,15 @@ try:
 
         clock.tick_busy_loop(120)
         controller.parse_events(world, clock)
+        print(control_info)
         # compute_control(control_info)
 
-        if show_in_carla:
-            carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
-        if show_in_camera:
-            cv2.imshow('RGB Camera', video_output)
+        
 
         # print(ego_vehicle.get_velocity().length()*3.6)
-        ego_vehicle.apply_control(control_info.ego_control)
+        control_info.ego_control.throttle = 1.0
+        control_info.ego_control.brake = 0.0
+        world.apply_control(control_info.ego_control)
         other_vehicle.apply_control(control_info.target_control)
         pygame.display.flip()
         world.tick(clock=clock)

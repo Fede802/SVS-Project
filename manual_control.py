@@ -161,11 +161,10 @@ def get_actor_display_name(actor, truncate=250):
 
 
 class World(object):
-    def __init__(self, carla_world, actor_filter, control_info):
+    def __init__(self, carla_world, actor_filter):
         self.world = carla_world
         self.player = None
         self.collision_sensor = None
-        self.control_info = control_info
         # self.lane_invasion_sensor = None
         # self.gnss_sensor = None
         self.camera_manager = None 
@@ -209,8 +208,8 @@ class World(object):
         actor_type = get_actor_display_name(self.player)
         # self.hud.notification(actor_type)
 
-    def add_ego_vehicle(self, vehicle):
-        self.player = vehicle
+    def apply_control(self, control):
+        self.player.apply_control(control)
 
     def next_weather(self, reverse=False):
         self._weather_index += -1 if reverse else 1
@@ -222,7 +221,7 @@ class World(object):
     def tick(self, clock):
         # self.hud.tick(self, clock)
         # TODO: mettere qua l'aggiornamento delle scritte
-        print("DIOCENAE")
+        return
 
     def render(self, display):
         self.camera_manager.render(display)
@@ -248,8 +247,9 @@ class World(object):
 
 
 class DualControl(object):
-    def __init__(self, world, start_in_autopilot):
+    def __init__(self, world, start_in_autopilot, control_info):
         self._autopilot_enabled = start_in_autopilot
+        self._control_info = control_info
         if isinstance(world.player, carla.Vehicle):
             self._control = carla.VehicleControl()
             world.player.set_autopilot(self._autopilot_enabled)
@@ -303,13 +303,13 @@ class DualControl(object):
                 #     world.camera_manager.next_sensor()
                 elif event.button == 10:
                     # TODO: mettere toggle distanza
-                    world.control_info.change_distance_offset()
+                    self._control_info.change_distance_offset()
                 elif event.button == 9: 
-                    world.control_info.pid_cc = not world.control_info.pid_cc
+                    self._control_info.pid_cc = not self._control_info.pid_cc
                 elif event.button == 22:
-                    world.control_info.increase_target_velocity()
+                    self._control_info.increase_target_velocity()
                 elif event.button == 21:
-                    world.control_info.decrease_target_velocity()
+                    self._control_info.decrease_target_velocity()
 
             elif event.type == pygame.KEYUP:
                 if self._is_quit_shortcut(event.key):
@@ -357,7 +357,7 @@ class DualControl(object):
             elif isinstance(self._control, carla.WalkerControl):
                 self._parse_walker_keys(pygame.key.get_pressed(), clock.get_time())
             # world.player.apply_control(self._control)  TODO: Lasciamo commentato???????
-            world.control_info.ego_control = self._control # TODO: Dovrebbe bastare questo 
+            self._control_info.ego_control = self._control # TODO: Dovrebbe bastare questo 
 
     def _parse_vehicle_keys(self, keys, milliseconds, world):
         self._control.throttle = 1.0 if keys[K_UP] or keys[K_w] else 0.0
@@ -372,7 +372,7 @@ class DualControl(object):
         self._control.steer = round(self._steer_cache, 1)
         if keys[K_DOWN] or keys[K_s]:
             self._control.brake = 1.0
-            world.control_info.pid_cc = False
+            self._control_info.pid_cc = False
         # self._control.brake = 1.0 if keys[K_DOWN] or keys[K_s] else 0.0
         self._control.hand_brake = keys[K_SPACE]
 
