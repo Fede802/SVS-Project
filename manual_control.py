@@ -351,7 +351,7 @@ class DualControl(object):
 
         if not self._autopilot_enabled:
             if isinstance(self._control, carla.VehicleControl):
-                self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time(), world)
+                self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time())
                 self._parse_vehicle_wheel()
                 self._control.reverse = self._control.gear < 0
             elif isinstance(self._control, carla.WalkerControl):
@@ -359,8 +359,10 @@ class DualControl(object):
             # world.player.apply_control(self._control)  TODO: Lasciamo commentato???????
             self._control_info.ego_control = self._control # TODO: Dovrebbe bastare questo 
 
-    def _parse_vehicle_keys(self, keys, milliseconds, world):
-        self._control.throttle = 1.0 if keys[K_UP] or keys[K_w] else 0.0
+    def _parse_vehicle_keys(self, keys, milliseconds):
+        if not self._control_info.pid_cc:
+            print("PID CC is not enabled")
+            self._control.throttle = 1.0 if keys[K_UP] or keys[K_w] else 0.0
         steer_increment = 5e-4 * milliseconds
         if keys[K_LEFT] or keys[K_a]:
             self._steer_cache -= steer_increment
@@ -391,25 +393,26 @@ class DualControl(object):
         K2 = 1.6  # 1.6
         #throttleCmd = K2 + (2.05 * math.log10(
         #    -0.7 * jsInputs[self._throttle_idx] + 1.4) - 1.2) / 0.92
-        throttleCmd = K2 + (2.05 * math.log10(
-            0.7 * jsInputs[self._throttle_idx] + 1.4) - 1.2) / 0.92
-        if throttleCmd <= 0:
-            throttleCmd = 0
-        elif throttleCmd > 1:
-            throttleCmd = 1
+        if not self._control_info.pid_cc:
+            throttleCmd = K2 + (2.05 * math.log10(0.7 * jsInputs[self._throttle_idx] + 1.4) - 1.2) / 0.92
+            brakeCmd = 1.6 + (2.05 * math.log10(
+            0.7 * jsInputs[self._brake_idx] + 1.4) - 1.2) / 0.92
+            if brakeCmd <= 0:
+                brakeCmd = 0
+            elif brakeCmd > 1:
+                brakeCmd = 1
+            self._control.steer = steerCmd
+            self._control.brake = brakeCmd
+            self._control.throttle = throttleCmd
+       
+        # if throttleCmd <= 0:
+        #     throttleCmd = 0
+        # elif throttleCmd > 1:
+        #     throttleCmd = 1
 
         #brakeCmd = 1.6 + (2.05 * math.log10(
         #    -0.7 * jsInputs[self._brake_idx] + 1.4) - 1.2) / 0.92
-        brakeCmd = 1.6 + (2.05 * math.log10(
-            0.7 * jsInputs[self._brake_idx] + 1.4) - 1.2) / 0.92
-        if brakeCmd <= 0:
-            brakeCmd = 0
-        elif brakeCmd > 1:
-            brakeCmd = 1
 
-        self._control.steer = steerCmd
-        self._control.brake = brakeCmd
-        self._control.throttle = throttleCmd
 
         #toggle = jsButtons[self._reverse_idx]
 

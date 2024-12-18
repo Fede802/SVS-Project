@@ -96,8 +96,7 @@ try:
             lastUpdate = time.time()
 
         clock.tick_busy_loop(120)
-        #controller.parse_events(world, clock)
-        print(control_info)
+        controller.parse_events(world, clock)
         
 
  
