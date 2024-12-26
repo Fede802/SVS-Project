@@ -32,8 +32,8 @@ class AccEnv(gym.Env):
         
         #Define the observation space velocity in Km/h, distance in meters
         self.observation_space = spaces.Box(
-            low=np.array([30.0, 0.0, 7.0, 0.0]), # [target velocity, current velocity, detected, security distance, current distance] in m/s
-            high=np.array([150, 300, carla_utility.compute_security_distance(150) + 21, self.RADAR_RANGE]), # [target velocity, current velocity, detected, security distance, current distance] in m/s
+            low=np.array([30.0, 0.0, 0.0, 7.0, 0.0]), # [target velocity, current velocity, detected, security distance, current distance] in m/s
+            high=np.array([150, 300, 1.0, carla_utility.compute_security_distance(150) + 21, self.RADAR_RANGE]), # [target velocity, current velocity, detected, security distance, current distance] in m/s
             dtype=np.float32
         )
 
@@ -107,23 +107,22 @@ class AccEnv(gym.Env):
         
         reward = self._compute_reward(self.last_observation)
         done = self._check_done(self.last_observation)
-        print("min_pd: ", self.last_observation[0] ,"min_d: ", self.last_observation[1],"reward:", reward)    
+        print("target_s: ",self.last_observation[0],"ego_s: ",self.last_observation[1],"detected: ",self.last_observation[2],"min_pd: ", self.last_observation[3] ,"min_d: ", self.last_observation[4],"reward:", reward)    
         return self.last_observation, reward, done, False, {}
     
     def _get_observation(self):
         current_velocity = self.ego_vehicle.get_velocity().length() * 3.6
         min_permitted_distance = carla_utility.compute_security_distance(current_velocity) + self.MIN_DISTANCE_OFFSET
         min_depth = self.radar_data["current_distance"]
-        distance_error = min_depth - min_permitted_distance
-        detected = 0 if distance_error > 0 else 1
+        distance_error = min_permitted_distance - min_depth
+        detected = 1.0 if distance_error > 0 else 0.0
         
-        return self.TARGET_VELOCITY, current_velocity, min_permitted_distance, min_depth
+        return self.TARGET_VELOCITY, current_velocity, detected, min_permitted_distance, min_depth
 
     def _compute_reward(self, observation):
-        distance_error = observation[2] - observation[3]
-        detected = distance_error > 0  
+        detected = observation[2] == 1.0  
         if detected:
-            return -abs(distance_error)/10
+            return -abs(observation[3] - observation[4])/10
         else:
             return -abs(observation[0] - observation[1])/10
         

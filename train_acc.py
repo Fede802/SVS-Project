@@ -20,7 +20,7 @@ model = PPO(
     n_steps=1024,  # Rollout buffer size
     batch_size=64,  # Batch size for training
     ent_coef=0.01,  # Entropy coefficient
-    n_epochs=500,
+    n_epochs=5000,
     seed=seed,
     tensorboard_log="./log"
     
@@ -29,7 +29,7 @@ model = PPO(
 callback = EvalCallback(env, best_model_save_path='./',
                         log_path='./', eval_freq=1000,
                         deterministic=True, render=False)
-model.learn(total_timesteps=1024*500, callback=callback, progress_bar=True, log_interval=1)
+model.learn(total_timesteps=1024*5000, callback=callback, progress_bar=True, log_interval=1)
 
 # Save the final model
 model.save("ppo_carla_model")
