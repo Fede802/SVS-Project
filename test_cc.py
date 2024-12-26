@@ -3,13 +3,13 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'utility'))
 import gymnasium.wrappers.atari_preprocessing
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import VecMonitor, SubprocVecEnv
-from env.env_acc_test import AccEnv
+from env.env_cc_test import AccEnvConstantSpeed
 import gymnasium 
 
 
 # Trained environment
 # env = AccEnv()
-env = AccEnv(42)
+env = AccEnvConstantSpeed()
 
 # env.reset()
 # env = gymnasium.wrappers.atari_preprocessing.AtariPreprocessing(env, frame_skip = 4)
@@ -37,9 +37,9 @@ env = AccEnv(42)
 
 
 # Save the final model
-env.setTargetSpeed(110)
-env.setTargetFrontSpeed(0)
-trainedModel = PPO.load("best_model", env=env)
+env.setTargetSpeed(200)
+env.setStartSpeed(110)
+trainedModel = PPO.load("working_cc_model", env=env)
 # trainedModel.get_env()
 # trainedModel.get_env().setTargetSpeed(110)
 # trainedModel.get_env().setTargetFrontSpeed(90)
@@ -49,20 +49,20 @@ print(obs)
 iteration = 0
 flag = False
 while True:
-    if iteration == 1000 and not flag:
-        env.setTargetFrontSpeed(0)
-        env.update_front()
-        flag = True
-        iteration = 0
-    elif iteration <= 400 and flag:
-        print(iteration)
-        env.setTargetFrontSpeed(iteration/10)
-        env.update_front()
-    elif iteration > 400 and flag:    
-        flag = False
-        iteration = 0
+    # if iteration == 1000 and not flag:
+    #     env.setTargetFrontSpeed(0)
+    #     env.update_front()
+    #     flag = True
+    #     iteration = 0
+    # elif iteration <= 400 and flag:
+    #     print(iteration)
+    #     env.setTargetFrontSpeed(iteration/10)
+    #     env.update_front()
+    # elif iteration > 400 and flag:    
+    #     flag = False
+    #     iteration = 0
 
-    iteration += 1        
+    # iteration += 1        
 
         
     action, _states = trainedModel.predict(obs, deterministic=True)
