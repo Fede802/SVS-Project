@@ -54,7 +54,7 @@ def spawn_camera(world, attach_to=None, transform=carla.Transform(carla.Location
     camera_bp.set_attribute('image_size_y', str(height))
     return __spawn_actor(world, camera_bp, transform, attach_to=attach_to)
 
-def spawn_radar(world, attach_to, transform=carla.Transform(carla.Location(x=1.2, z=2.2), carla.Rotation(pitch=0)), horizontal_fov = 30, vertical_fov = 30, range=100, points_per_second=1500, sensor_tick = 0):
+def spawn_radar(world, attach_to, transform=carla.Transform(carla.Location(x=1.2, z=2.0), carla.Rotation(pitch=0)), horizontal_fov = 30, vertical_fov = 30, range=100, points_per_second=1500, sensor_tick = 0):
     radar_bp = world.get_blueprint_library().find('sensor.other.radar')
     radar_bp.set_attribute('horizontal_fov', str(horizontal_fov))
     radar_bp.set_attribute('vertical_fov', str(vertical_fov))
@@ -74,6 +74,10 @@ def __setup_spectactor(spectator, spawn_point: carla.Transform):
     if math_utility.sub(spectator.get_location(), spawn_point.location).length() > 500:
         spectator.set_transform(spawn_point)
         time.sleep(10)
+
+def setup_spectator(world: carla.World, spawn_point: carla.Transform):
+    spectator = world.get_spectator()
+    __setup_spectactor(spectator, spawn_point)        
 
 def compute_security_distance(velocity):
     return (velocity // 10) ** 2

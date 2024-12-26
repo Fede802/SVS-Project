@@ -11,6 +11,7 @@ class AccEnv(gym.Env):
     
     MAX_TARGET_VELOCITY = 130
     TARGET_VELOCITY = -1 #set randomly in reset or with setter
+    TARGET_FRONT_VELOCITY = -1
     RADAR_RANGE_OFFSET = 20
     RADAR_RANGE = carla_utility.compute_security_distance(MAX_TARGET_VELOCITY) + RADAR_RANGE_OFFSET
     SPAWN_POINT = carla.Transform(carla.Location(x=2388, y=6164, z=179), carla.Rotation(yaw = -88.2))
@@ -48,6 +49,9 @@ class AccEnv(gym.Env):
     def setTargetSpeed(self, speed):
         self.TARGET_VELOCITY = speed
 
+    def setTargetFrontSpeed(self, speed):
+        self.TARGET_FRONT_VELOCITY = speed    
+
     def setMinDistanceOffset(self, offset):
         self.MIN_DISTANCE_OFFSET = offset    
 
@@ -61,19 +65,22 @@ class AccEnv(gym.Env):
         self.ego_vehicle = carla_utility.spawn_vehicle_bp_at(self.world, 'vehicle.tesla.cybertruck', spawn_point=carla.Transform(debug_utility.get_point_from_trasform(self.SPAWN_POINT, ego_offset), self.SPAWN_POINT.rotation))
         self.leader_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(self.world, self.ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=other_vehicle_offset)
 
+    def update_front(self):
+        random_leader_velocity = self.TARGET_FRONT_VELOCITY
+        self.leader_vehicle.set_target_velocity(debug_utility.get_velocity_vector(random_leader_velocity, self.SPAWN_POINT.rotation))
+
 
     def reset(self, seed = 42):
         carla_utility.destroy_all_vehicle_and_sensors(self.world) #to avoid spawning bugs
-        self.TARGET_VELOCITY = rnd.randint(30, 150)
-        random_ego_velocity = rnd.randint(0, 130)
-        self.MIN_DISTANCE_OFFSET = self.min_distance_setting[rnd.randint(0, 2)]
+        random_ego_velocity = self.TARGET_VELOCITY
+        self.MIN_DISTANCE_OFFSET = self.min_distance_setting[1]
         
         # Spawn vehicles and sensor
         self.spawn_vehicles(random_ego_velocity)
         self.radar_sensor = carla_utility.spawn_radar(self.world, self.ego_vehicle, range=self.RADAR_RANGE)
         self.radar_sensor.listen(self._radar_callback)
         
-        random_leader_velocity = rnd.randint(0, random_ego_velocity)
+        random_leader_velocity = self.TARGET_FRONT_VELOCITY
         random_ego_velocity = random_ego_velocity / 3.6
         random_leader_velocity = random_leader_velocity / 3.6
         self.ego_vehicle.set_target_velocity(debug_utility.get_velocity_vector(random_ego_velocity, self.SPAWN_POINT.rotation))
@@ -131,9 +138,9 @@ class AccEnv(gym.Env):
             return -abs(observation[0] - observation[1])/10
        
     def _check_done(self, observation):
-        self.step_count += 1
-        if self.step_count > 1024:
-            self.step_count = 0
-            carla_utility.destroy_all_vehicle_and_sensors(self.world) #to avoid spawning bugs
-            return True
+        # self.step_count += 1
+        # if self.step_count > 1024:
+        #     self.step_count = 0
+        #     carla_utility.destroy_all_vehicle_and_sensors(self.world) #to avoid spawning bugs
+        #     return True
         return False
