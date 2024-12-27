@@ -104,7 +104,7 @@ try:
         other_vehicle.apply_control(control_info.target_control)
         pygame.display.flip()
         world.tick(clock=clock)
-        world.render(display)
+        world.render(display, control_info)
 except KeyboardInterrupt:
     pass
 finally:

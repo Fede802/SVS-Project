@@ -51,6 +51,7 @@ except IndexError:
 import carla
 
 from carla import ColorConverter as cc
+import cv2
 
 import argparse
 import collections
@@ -223,8 +224,8 @@ class World(object):
         # TODO: mettere qua l'aggiornamento delle scritte
         return
 
-    def render(self, display):
-        self.camera_manager.render(display)
+    def render(self, display, control_info):
+        self.camera_manager.render(display, control_info)
         # self.hud.render(display)
 
     def destroy(self):
@@ -503,14 +504,26 @@ class CameraManager(object):
     def next_sensor(self):
         self.set_sensor(self.index + 1)
 
+    def print_text_to_screen(self, display, text, position, color):
+        font = pygame.font.Font(None, 36)  # You can choose the font and size
+        text_surface = font.render(text, True, color)  # White color
+        display.blit(text_surface, position)
+
     def toggle_recording(self):
         self.recording = not self.recording
 
-    def render(self, display):
+    def render(self, display, control_info):
         if self.surface is not None:
             scaled_surface = pygame.transform.scale(self.surface, display.get_size())
             display.blit(scaled_surface, (0, 0))
-
+           
+        self.print_text_to_screen(display, f"Throttle: {control_info.ego_control.throttle}", (10, 10), (255, 255, 255))
+        self.print_text_to_screen(display, f"Brake: {control_info.ego_control.brake}", (10, 50), (255, 255, 255))
+        self.print_text_to_screen(display, f"Steer: {control_info.ego_control.steer}", (10, 90), (255, 255, 255))
+        self.print_text_to_screen(display, f"Hand Brake: {control_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
+        self.print_text_to_screen(display, f"PID CC: {control_info.pid_cc}", (10, 170), (255, 255, 255))
+        self.print_text_to_screen(display, f"Min Permitted Distance: {control_info.min_permitted_offset}", (10, 210), (255, 255, 255))
+        self.print_text_to_screen(display, f"Target Velocity: {control_info.target_velocity}", (10, 250), (255, 255, 255))
     @staticmethod
     def _parse_image(weak_self, image):
         self = weak_self()
