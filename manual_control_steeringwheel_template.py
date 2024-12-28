@@ -138,6 +138,7 @@ class World(object):
         self._weather_index = 0
         self._actor_filter = actor_filter
         self.restart()
+        
         self.world.on_tick(hud.on_world_tick)
 
     def restart(self):

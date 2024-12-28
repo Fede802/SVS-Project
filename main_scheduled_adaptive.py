@@ -7,7 +7,7 @@ from log_utility import Logger # type: ignore
 import numpy as np
 from server import start_servers, send_data, close_servers # type: ignore
 from pid_controller_scheduled_adaptive import PIDController
-from manual_control import compute_control, ControlInfo, DualControl, World
+from manual_control import ControlInfo, DualControl, World
 import hud
 import plot_utility # type: ignore
 
@@ -16,7 +16,7 @@ save_info = True
 show_log = False
 show_in_carla = False
 
-pid_cc = True
+pid_cc = False
 update_frequency = 0.01 #seconds
 
 radar_detection_h_radius = 1
@@ -43,13 +43,17 @@ display = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
 #hud = hud.HUD(1280, 720)
 pid_controller = PIDController(learning_rate, update_frequency, buffer_size=None) #add buffer_size = None to disable buffer
 control_info = ControlInfo(pid_cc, min_permitted_offset=min_distance_offset, target_velocity=target_velocity)
-world = World(client.get_world(), "vehicle.*")
+world = World(client.get_world())
 controller = DualControl(world, False, control_info)
+# while True:
+#     continue
+# world = World(client.get_world())
+# controller = DualControl(world, False, control_info)
 
 clock = pygame.time.Clock()
 # spectator = world.world.get_spectator()
 
-carla_utility.destroy_all_vehicle_and_sensors(world) #to avoid spawning bugs
+# world.restart() #to avoid spawning bugs
 
 
 
@@ -96,21 +100,20 @@ try:
             lastUpdate = time.time()
 
         clock.tick_busy_loop(120)
-        controller.parse_events(world, clock)
+        if controller.parse_events(world, clock):
+            break
         
-
- 
         world.apply_control(control_info.ego_control)
         other_vehicle.apply_control(control_info.target_control)
-        pygame.display.flip()
         world.tick(clock=clock)
         world.render(display, control_info)
+        pygame.display.flip()
 except KeyboardInterrupt:
     pass
 finally:
     pygame.quit()
-    cv2.destroyAllWindows()  
-    carla_utility.destroy_all_vehicle_and_sensors(world) 
+    cv2.destroyAllWindows()
+    carla_utility.destroy_all_vehicle_and_sensors(client.get_world()) 
     logger.close() 
     if send_info: 
         close_servers()

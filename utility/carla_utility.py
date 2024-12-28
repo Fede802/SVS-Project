@@ -61,11 +61,10 @@ def spawn_radar(world, attach_to, transform=carla.Transform(carla.Location(x=1.2
     return __spawn_actor(world, radar_bp, transform, attach_to=attach_to)
 
 def destroy_all_vehicle_and_sensors(world):
-    world.restart()
-    # for v in world.world.get_actors().filter('vehicle.*'):
-    #     v.destroy()
-    # for v in world.world.get_actors().filter('sensor.*'):
-    #     v.destroy()
+    for v in world.get_actors().filter('vehicle.*'):
+        v.destroy()
+    for v in world.get_actors().filter('sensor.*'):
+        v.destroy()
 
 def __setup_spectactor(spectator, spawn_point: carla.Transform):
     if math_utility.sub(spectator.get_location(), spawn_point.location).length() > 1000:
