@@ -9,7 +9,7 @@ import carla_utility
 
 class AccEnv(gym.Env):
     
-    MAX_TARGET_VELOCITY = 130
+    MAX_TARGET_VELOCITY = 150
     TARGET_VELOCITY = -1 #set randomly in reset or with setter
     RADAR_RANGE_OFFSET = 20
     RADAR_RANGE = carla_utility.compute_security_distance(MAX_TARGET_VELOCITY) + RADAR_RANGE_OFFSET
@@ -52,19 +52,15 @@ class AccEnv(gym.Env):
         self.MIN_DISTANCE_OFFSET = offset    
 
     def spawn_vehicles(self, random_ego_velocity):
-        
-        ego_offset = 0
-        ego_security_distance = carla_utility.compute_security_distance(random_ego_velocity) + self.MIN_DISTANCE_OFFSET
-        security_distance_spawn_offset = 150
-        other_vehicle_offset = rnd.randint(ego_offset + ego_security_distance, ego_offset + self.RADAR_RANGE)
+        other_vehicle_offset = carla_utility.compute_security_distance(random_ego_velocity) + self.MIN_DISTANCE_OFFSET
 
-        self.ego_vehicle = carla_utility.spawn_vehicle_bp_at(self.world, 'vehicle.tesla.cybertruck', spawn_point=carla.Transform(debug_utility.get_point_from_trasform(self.SPAWN_POINT, ego_offset), self.SPAWN_POINT.rotation))
+        self.ego_vehicle = carla_utility.spawn_vehicle_bp_at(self.world, 'vehicle.tesla.cybertruck', spawn_point=self.SPAWN_POINT)
         self.leader_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(self.world, self.ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=other_vehicle_offset)
 
 
     def reset(self, seed = 42):
         carla_utility.destroy_all_vehicle_and_sensors(self.world) #to avoid spawning bugs
-        self.TARGET_VELOCITY = rnd.randint(30, 150)
+        # self.TARGET_VELOCITY = rnd.randint(30, 150)
         random_ego_velocity = rnd.randint(0, 150)
         self.MIN_DISTANCE_OFFSET = self.min_distance_setting[rnd.randint(0, 2)]
         
@@ -121,14 +117,16 @@ class AccEnv(gym.Env):
         min_depth = self.radar_data["current_distance"]
         distance_error = min_depth - min_permitted_distance
         detected = 0 if distance_error > 0 else 1
-        
+        detected = min_depth < min_permitted_distance 
         return min_permitted_distance, min_depth
 
     def _compute_reward(self, observation):
-        if observation[0] - observation[1] <= 0:
-            return (observation[0] - observation[1])/5
-        else:
+        detected = observation[1] <= observation[0]
+        if detected:
             return -abs(observation[0] - observation[1])/10
+        else:
+            return 0.1
+            
        
     def _check_done(self, observation):
         self.step_count += 1

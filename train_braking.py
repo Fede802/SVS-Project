@@ -4,8 +4,10 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import VecMonitor, SubprocVecEnv
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 from env.env_braking import AccEnv
+import carla_utility
 
 # Create the environment
+print(carla_utility.compute_security_distance(150))
 seed = 42
 env = AccEnv(seed)
 env.reset(seed) #??? maybe useless
