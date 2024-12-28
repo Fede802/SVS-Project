@@ -53,7 +53,7 @@ class AccEnv(gym.Env):
 
     def spawn_vehicles(self, random_ego_velocity):
         
-        ego_offset = rnd.randint(0, 50)
+        ego_offset = 0
         ego_security_distance = carla_utility.compute_security_distance(random_ego_velocity) + self.MIN_DISTANCE_OFFSET
         security_distance_spawn_offset = 150
         other_vehicle_offset = rnd.randint(ego_offset + ego_security_distance, ego_offset + self.RADAR_RANGE)
@@ -65,7 +65,7 @@ class AccEnv(gym.Env):
     def reset(self, seed = 42):
         carla_utility.destroy_all_vehicle_and_sensors(self.world) #to avoid spawning bugs
         self.TARGET_VELOCITY = rnd.randint(30, 150)
-        random_ego_velocity = rnd.randint(0, 130)
+        random_ego_velocity = rnd.randint(0, 150)
         self.MIN_DISTANCE_OFFSET = self.min_distance_setting[rnd.randint(0, 2)]
         
         # Spawn vehicles and sensor
@@ -126,13 +126,13 @@ class AccEnv(gym.Env):
 
     def _compute_reward(self, observation):
         if observation[0] - observation[1] <= 0:
-            return 1/((observation[1] - observation[0])/10)
+            return (observation[0] - observation[1])/5
         else:
             return -abs(observation[0] - observation[1])/10
        
     def _check_done(self, observation):
         self.step_count += 1
-        if self.step_count > 1024:
+        if self.step_count > 1024 or (observation[0] - observation[1]) > self.MIN_DISTANCE_OFFSET / 2:
             self.step_count = 0
             carla_utility.destroy_all_vehicle_and_sensors(self.world) #to avoid spawning bugs
             return True

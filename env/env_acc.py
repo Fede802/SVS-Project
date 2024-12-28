@@ -54,13 +54,13 @@ class AccEnv(gym.Env):
     def spawn_vehicles(self, random_ego_velocity):
         other_vehicle_offset = rnd.randint(0, 2 * carla_utility.compute_security_distance(random_ego_velocity)) + self.MIN_DISTANCE_OFFSET
         self.ego_vehicle = carla_utility.spawn_vehicle_bp_at(self.world, 'vehicle.tesla.cybertruck', spawn_point=self.SPAWN_POINT)
-        self.leader_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(self.world, self.ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=other_vehicle_offset)
+        # self.leader_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(self.world, self.ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=other_vehicle_offset)
 
 
     def reset(self, seed = 42):
         print("reset")
         carla_utility.destroy_all_vehicle_and_sensors(self.world) #to avoid spawning bugs
-        self.TARGET_VELOCITY = rnd.randint(30, 150)
+        # self.TARGET_VELOCITY = rnd.randint(30, 150)
         random_ego_velocity = rnd.randint(0, 180)
         self.MIN_DISTANCE_OFFSET = self.min_distance_setting[rnd.randint(0, 2)]
         
@@ -68,11 +68,11 @@ class AccEnv(gym.Env):
         self.spawn_vehicles(random_ego_velocity)
         self.radar_sensor = carla_utility.spawn_radar(self.world, self.ego_vehicle, range=self.RADAR_RANGE)
         self.radar_sensor.listen(self._radar_callback)
-        random_leader_velocity = rnd.randint(0, 180)
+        # random_leader_velocity = rnd.randint(0, 180)
         random_ego_velocity = random_ego_velocity / 3.6
-        random_leader_velocity = random_leader_velocity / 3.6
+        # random_leader_velocity = random_leader_velocity / 3.6
         self.ego_vehicle.set_target_velocity(debug_utility.get_velocity_vector(random_ego_velocity, self.SPAWN_POINT.rotation))
-        self.leader_vehicle.set_target_velocity(debug_utility.get_velocity_vector(random_leader_velocity, self.SPAWN_POINT.rotation))
+        # self.leader_vehicle.set_target_velocity(debug_utility.get_velocity_vector(random_leader_velocity, self.SPAWN_POINT.rotation))
         
         self.world.tick() #totaly useless
 
@@ -130,7 +130,8 @@ class AccEnv(gym.Env):
        
     def _check_done(self, observation):
         self.step_count += 1
-        if self.step_count > 1024 or (observation[2] - observation[3]) > self.MIN_DISTANCE_OFFSET / 2:
+        if self.step_count > 1024 or (observation[3] - observation[4]) > self.MIN_DISTANCE_OFFSET / 2:
+            print("done")
             self.step_count = 0
             carla_utility.destroy_all_vehicle_and_sensors(self.world) #to avoid spawning bugs
             return True
