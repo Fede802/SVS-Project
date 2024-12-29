@@ -280,14 +280,20 @@ class DualControl(object):
 
     def _parse_vehicle_keys(self, keys, milliseconds, control_info):
         control = control_info.ego_control
-        if keys[K_UP] or keys[K_w]:
-            print("dual",control_info.ego_control)
+        control2 = control_info.target_control
+        if keys[K_w]:
             control.throttle = 1.0
             control.brake = 0.0
-        if keys[K_DOWN] or keys[K_s]:
+        if keys[K_s]:
             control.throttle = 0.0
             control.brake = 1.0
             control_info.pid_cc = False
+        if keys[K_UP]:
+            control2.throttle = 1.0
+            control2.brake = 0.0
+        if keys[K_DOWN]:
+            control2.throttle = 0.0
+            control2.brake = 1.0    
         control.hand_brake = keys[K_SPACE]
         steer_increment = 5e-4 * milliseconds
         if keys[K_LEFT] or keys[K_a]:

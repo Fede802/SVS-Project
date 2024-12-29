@@ -9,7 +9,6 @@ from vehicle_controller.pid_controller import pid_controller_random_adaptive, pi
 from vehicle_controller.rl_controller import rl_controller
 from manual_control import ControlInfo, DualControl, CameraManager
 import plot_utility 
-   
 
 send_info = False
 save_info = True
