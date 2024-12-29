@@ -11,7 +11,7 @@ import plot_utility
 
 send_info = False
 save_info = True
-show_log = False
+show_log = True
 show_in_carla = False
 pid_cc = False
 update_frequency = 0.01 #seconds
@@ -37,9 +37,9 @@ pygame.init()
 pygame.font.init()
 display = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
 
-pid_controller = pid_controller_random_adaptive.PIDController(learning_rate) #add buffer_size = None to disable buffer
-pid_controller = pid_controller_scheduled_adaptive.PIDController(learning_rate, update_frequency) #add buffer_size = None to disable buffer
-pid_controller = pid_controller_random.PIDController() #add buffer_size = None to disable buffer
+# pid_controller = pid_controller_random_adaptive.PIDController(learning_rate) #add buffer_size = None to disable buffer
+# pid_controller = pid_controller_scheduled_adaptive.PIDController(learning_rate, update_frequency) #add buffer_size = None to disable buffer
+# pid_controller = pid_controller_random.PIDController() #add buffer_size = None to disable buffer
 pid_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
 
 
@@ -73,7 +73,7 @@ def restart():
     radar = carla_utility.spawn_radar(ego_vehicle, range=radar_range)
     radar.listen(lambda data: radar_callback(data, radar))
     carla_utility.move_spectator_to(ego_vehicle.get_transform())
-    other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
+    # other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
 
 controller = DualControl(restart_callback=restart)
 
@@ -85,6 +85,7 @@ try:
     while control_info.running:
         # debug_utility.draw_radar_bounding_range(radar)
         # debug_utility.draw_radar_point_cloud_range(radar, radar_detection_h_radius, radar_detection_v_radius)
+        # control_info.reset_ego_control()
         if control_info.pid_cc:
                 pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth) 
         if(time.time() - lastUpdate > update_frequency):          
@@ -94,13 +95,13 @@ try:
                 logger.write(str(ego_vehicle.get_velocity().length() * 3.6)+ "," + str(ego_vehicle.get_acceleration().length())+ "," +str(control_info.ego_control.throttle)+ "," +str(control_info.ego_control.brake))
             lastUpdate = time.time()
 
-        clock.tick_busy_loop(120)
+        # clock.tick_busy_loop(120)
         if controller.parse_events(camera_manager, control_info, clock):
             break
         
         ego_vehicle.apply_control(control_info.ego_control)
-        other_vehicle.apply_control(control_info.target_control)
-        camera_manager.render(display, control_info)
+        # other_vehicle.apply_control(control_info.target_control)
+        camera_manager.render(display, control_info, ego_vehicle)
         pygame.display.flip()
 except KeyboardInterrupt:
     pass
