@@ -23,7 +23,7 @@ def next_weather(reverse=False):
 def __spawn_actor(blueprint, spawn_point: carla.Transform, attach_to: carla.Actor = None):
     __setup_spectactor(carla.Transform(math_utility.add(spawn_point.location, attach_to.get_location() if attach_to != None else carla.Location())))
     actor = world.spawn_actor(blueprint, spawn_point, attach_to)
-    time.sleep(2)
+    time.sleep(10)
     return actor
 
 def __transform_vector(point: carla.Transform, transform: carla.Transform):

@@ -8,12 +8,13 @@ import server
 from vehicle_controller.pid_controller import pid_controller_random_adaptive, pid_controller_scheduled_adaptive, pid_controller_random, pid_controller_scheduled
 from manual_control import ControlInfo, DualControl, CameraManager
 import plot_utility 
+   
 
 send_info = False
 save_info = True
 show_log = True
 show_in_carla = False
-pid_cc = False
+pid_cc = True
 update_frequency = 0.01 #seconds
 
 radar_detection_h_radius = 1
@@ -38,9 +39,9 @@ pygame.font.init()
 display = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
 
 # pid_controller = pid_controller_random_adaptive.PIDController(learning_rate) #add buffer_size = None to disable buffer
-# pid_controller = pid_controller_scheduled_adaptive.PIDController(learning_rate, update_frequency) #add buffer_size = None to disable buffer
+pid_controller = pid_controller_scheduled_adaptive.PIDController(learning_rate, update_frequency) #add buffer_size = None to disable buffer
 # pid_controller = pid_controller_random.PIDController() #add buffer_size = None to disable buffer
-pid_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
+# pid_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
 
 
 
@@ -73,6 +74,7 @@ def restart():
     radar = carla_utility.spawn_radar(ego_vehicle, range=radar_range)
     radar.listen(lambda data: radar_callback(data, radar))
     carla_utility.move_spectator_to(ego_vehicle.get_transform())
+    time.sleep(1)
     # other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
 
 controller = DualControl(restart_callback=restart)
@@ -87,8 +89,10 @@ try:
         # debug_utility.draw_radar_point_cloud_range(radar, radar_detection_h_radius, radar_detection_v_radius)
         # control_info.reset_ego_control()
         if control_info.pid_cc:
-                pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth) 
-        if(time.time() - lastUpdate > update_frequency):          
+                pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth)      
+        if(time.time() - lastUpdate > update_frequency):  
+            # if control_info.pid_cc:
+            #     pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth)        
             if send_info:
                 server.send_data({"velocity": ego_vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.get_acceleration().length()})
             if save_info:
