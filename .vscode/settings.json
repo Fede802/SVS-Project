@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./utility",
+        "./mqtt_service"
+    ]
+}

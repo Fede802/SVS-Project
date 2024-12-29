@@ -126,16 +126,13 @@ class ControlInfo:
         self.ego_control = carla.VehicleControl()
 
     def change_distance_offset(self):
-        if self.min_permitted_offset == 7 or self.min_permitted_offset == 14:
-            self.min_permitted_offset += 7
-        else:
-            self.min_permitted_offset = 7
-
+        self.min_permitted_offset = (self.min_permitted_offset + 7) % 21
+        
     def increase_target_velocity(self):
-        self.target_velocity += 10 if self.target_velocity < 130 else 0
+        self.target_velocity += 1 if self.target_velocity < 130 else 0
     
     def decrease_target_velocity(self):
-        self.target_velocity -= 10 if self.target_velocity > 50 else 0
+        self.target_velocity -= 1 if self.target_velocity > 30 else 0
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
@@ -269,16 +266,22 @@ class DualControl(object):
                     if not control_info.pid_cc:
                         control_info.ego_control.throttle = 0.0
                         control_info.ego_control.brake = 0.0
-    
-            self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time(), control_info)
-            #self._parse_vehicle_wheel(control) #TODO "To drive start by preshing the brake pedal :')"
-            control.reverse = control.gear < 0
-            # world.player.apply_control(self._control)  TODO: Lasciamo commentato???????
-            # control_info.ego_control = control # TODO: Dovrebbe bastare questo 
+                elif event.key == pygame.K_PLUS:
+                    control_info.increase_target_velocity()
+                elif event.key == pygame.K_MINUS:
+                    control_info.decrease_target_velocity()            
+
+        self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time(), control_info)
+        #self._parse_vehicle_wheel(control) #TODO "To drive start by preshing the brake pedal :')"
+        control.reverse = control.gear < 0
+        # world.player.apply_control(self._control)  TODO: Lasciamo commentato???????
+        # control_info.ego_control = control # TODO: Dovrebbe bastare questo 
+        return False
 
     def _parse_vehicle_keys(self, keys, milliseconds, control_info):
         control = control_info.ego_control
         if keys[K_UP] or keys[K_w]:
+            print("dual",control_info.ego_control)
             control.throttle = 1.0
             control.brake = 0.0
         if keys[K_DOWN] or keys[K_s]:
@@ -294,7 +297,7 @@ class DualControl(object):
         else:
             self._steer_cache = 0.0
         self._steer_cache = min(0.7, max(-0.7, self._steer_cache))
-        self.steer = round(self._steer_cache, 1)
+        control.steer = round(self._steer_cache, 1)
         
 
     def _parse_vehicle_wheel(self, control):
@@ -395,7 +398,7 @@ class CameraManager(object):
         text_surface = font.render(text, True, color)  # White color
         display.blit(text_surface, position)
 
-    def render(self, display, control_info):
+    def render(self, display, control_info, ego_veichle: carla.Vehicle):
         if self.surface is not None:
             scaled_surface = pygame.transform.scale(self.surface, display.get_size())
             display.blit(scaled_surface, (0, 0))
@@ -405,7 +408,8 @@ class CameraManager(object):
         self.__print_text_to_screen(display, f"Hand Brake: {control_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
         self.__print_text_to_screen(display, f"PID CC: {control_info.pid_cc}", (10, 170), (255, 255, 255))
         self.__print_text_to_screen(display, f"Min Permitted Distance: {control_info.min_permitted_offset}", (10, 210), (255, 255, 255))
-        self.__print_text_to_screen(display, f"Target Velocity: {control_info.target_velocity}", (10, 250), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Target Velocity: {ego_veichle.get_velocity().length() * 3.6}", (10, 250), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Target Velocity: {control_info.target_velocity}", (10, 290), (255, 255, 255))
 
     @staticmethod
     def _parse_image(weak_self, image):
