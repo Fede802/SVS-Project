@@ -13,13 +13,6 @@ class PID:
         self.e_buffer = deque(maxlen=buffer_size) if buffer_size != None and buffer_size > 0 else deque()
 
     def compute_control(self, target, current):
-        """
-        Compute the PID control based on PID equations.
-        
-        :param target: Target value
-        :param current: Current value
-        :return: Control value
-        """
         e = target - current
         self.e_buffer.append(e)
         ie = np.sum(self.e_buffer) * self.dt
@@ -58,4 +51,3 @@ class PIDController:
         else:
             control_info.ego_control.throttle = self.last_throttle
             control_info.ego_control.brake = self.last_brake
-    

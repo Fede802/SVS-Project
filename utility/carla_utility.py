@@ -1,4 +1,5 @@
-import carla, time, debug_utility, math_utility, re
+import carla, time, debug_utility, math_utility, re, pygame, numpy as np
+from carla import ColorConverter as cc
 
 client = carla.Client('localhost', 2000)
 client.set_timeout(100.0)
@@ -103,3 +104,62 @@ def setup_spectator(world: carla.World, spawn_point: carla.Transform):
 def compute_security_distance(velocity):
     return (velocity // 10) ** 2
 
+class CameraManager(object):
+    def __init__(self, parent_actor, transform_index = 0):
+        self.sensor = None
+        self.surface = None
+        self._parent = parent_actor
+        self._camera_transforms = [
+            carla.Transform(carla.Location(x=-5.5, z=2.8), carla.Rotation(pitch=-15)),
+            carla.Transform(carla.Location(x=1.6, z=1.7))]
+        self.transform_index = transform_index
+        # self.hud = hud
+        self.sensors = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
+        self.sensors.append(self._parent.get_world().get_blueprint_library().find(self.sensors[0]))
+        self.sensors[-1].set_attribute('image_size_x', "1280")
+        self.sensors[-1].set_attribute('image_size_y', "720")
+        # if item[0].startswith('sensor.camera'):
+        #     bp.set_attribute('image_size_x', str(hud.dim[0]))
+        #     bp.set_attribute('image_size_y', str(hud.dim[1]))
+
+        self.__spawn_camera()    
+
+    def __spawn_camera(self):
+        self.sensor = self._parent.get_world().spawn_actor(
+            self.sensors[-1],
+            self._camera_transforms[self.transform_index],
+            attach_to=self._parent)
+    
+        self.sensor.listen(self._parse_image)
+
+    #change camera view
+    def toggle_camera(self):
+        self.transform_index = (self.transform_index + 1) % len(self._camera_transforms)
+        self.sensor.destroy()
+        self.__spawn_camera()
+    
+    def __print_text_to_screen(self, display, text, position, color):
+        font = pygame.font.Font(None, 36)  # You can choose the font and size
+        text_surface = font.render(text, True, color)  # White color
+        display.blit(text_surface, position)
+
+    def render(self, display, control_info, ego_veichle: carla.Vehicle):
+        if self.surface is not None:
+            scaled_surface = pygame.transform.scale(self.surface, display.get_size())
+            display.blit(scaled_surface, (0, 0))
+        self.__print_text_to_screen(display, f"Throttle: {control_info.ego_control.throttle}", (10, 10), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Brake: {control_info.ego_control.brake}", (10, 50), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Steer: {control_info.ego_control.steer}", (10, 90), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Hand Brake: {control_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
+        self.__print_text_to_screen(display, f"PID CC: {control_info.cc()}", (10, 170), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Min Permitted Distance: {control_info.min_permitted_offset}", (10, 210), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Target Velocity: {ego_veichle.get_velocity().length() * 3.6}", (10, 250), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Target Velocity: {control_info.target_velocity}", (10, 290), (255, 255, 255))
+
+    def _parse_image(self, image):
+        image.convert(self.sensors[1])
+        array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
+        array = np.reshape(array, (image.height, image.width, 4))
+        array = array[:, :, :3]
+        array = array[:, :, ::-1]
+        self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))

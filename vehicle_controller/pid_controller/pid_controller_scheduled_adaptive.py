@@ -2,10 +2,11 @@ import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'utility'))
 import numpy as np
 from collections import deque
-import carla_utility, time, carla
+import carla_utility, time
 
 class PID:
     def __init__(self, learning_rate, dt, buffer_size, kp=0.2, ki=0.0, kd=0.0):
+        self.learning_rate = learning_rate
         self.kp = kp
         self.ki = ki
         self.kd = kd
@@ -13,17 +14,14 @@ class PID:
         self.e_buffer = deque(maxlen=buffer_size) if buffer_size != None and buffer_size > 0 else deque()
 
     def compute_control(self, target, current):
-        """
-        Compute the PID control based on PID equations.
-        
-        :param target: Target value
-        :param current: Current value
-        :return: Control value
-        """
         e = target - current
         self.e_buffer.append(e)
         ie = np.sum(self.e_buffer) * self.dt
         de = (self.e_buffer[-1] - self.e_buffer[-2]) / self.dt if len(self.e_buffer) > 1 else 0.0
+
+        self.ki += self.learning_rate * np.sum(self.e_buffer)
+        self.kd += self.learning_rate * de
+        self.kp += self.learning_rate * e
 
         return np.clip((self.kp * e) + (self.kd * de) + (self.ki * ie), 0.0, 1.0)
     
@@ -43,7 +41,7 @@ class PIDController:
         if control_info.reset:
             self.__reset()
             control_info.reset = False
-            
+
         if(time.time() - self.last_update > self.update_frequency):
             min_permitted_distance = carla_utility.compute_security_distance(current_velocity) + control_info.min_permitted_offset
             distance_error = min_depth - min_permitted_distance
@@ -58,4 +56,3 @@ class PIDController:
         else:
             control_info.ego_control.throttle = self.last_throttle
             control_info.ego_control.brake = self.last_brake    
-

@@ -31,8 +31,6 @@ def draw_radar_point(radar: carla.Actor, point: carla.RadarDetection, life_time 
     shifted_max_range_point = math_utility.sub(get_point_at(radar, radar_location, point.depth), radar_location)
     debug.draw_line(radar_location, math_utility.add(math_utility.rotate(shifted_max_range_point, point.azimuth, point.altitude),radar_location), life_time=life_time, color=color)
 
- 
-
 def draw_radar_point_cloud_range(radar: carla.Actor, h_radius, v_radius, life_time = 0.1, color = carla.Color(255, 0, 0)):
     debug = radar.get_world().debug
     radar_range = int(radar.attributes.get('range'))

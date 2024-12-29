@@ -2,10 +2,7 @@ import random as rnd
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
-import carla
-import debug_utility
-import carla_utility
-
+import carla, debug_utility, carla_utility
 
 class GymEnv(gym.Env):
     
