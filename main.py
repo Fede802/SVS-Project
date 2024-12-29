@@ -1,4 +1,5 @@
 import sys, os
+
 sys.path.append(os.path.join(os.path.dirname(__file__), 'utility'))
 sys.path.append(os.path.join(os.path.dirname(__file__), 'mqtt_service'))
 
@@ -6,7 +7,7 @@ import carla, time, pygame, cv2, debug_utility, carla_utility
 from log_utility import Logger 
 import numpy as np
 from server import start_servers, send_data, close_servers
-from pid_controller_scheduled_adaptive import PIDController
+from vehicle_controller.pid_controller import pid_controller_random_adaptive, pid_controller_scheduled_adaptive, pid_controller_random, pid_controller_scheduled
 from manual_control import ControlInfo, DualControl, World
 import plot_utility 
 
@@ -40,7 +41,10 @@ pygame.font.init()
 # pygame.display.set_mode((400, 300))
 display = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
 #hud = hud.HUD(1280, 720)
-pid_controller = PIDController(learning_rate, update_frequency, buffer_size=None) #add buffer_size = None to disable buffer
+pid_controller = pid_controller_random_adaptive.PIDController(learning_rate) #add buffer_size = None to disable buffer
+pid_controller = pid_controller_scheduled_adaptive.PIDController(learning_rate, update_frequency) #add buffer_size = None to disable buffer
+pid_controller = pid_controller_random.PIDController() #add buffer_size = None to disable buffer
+pid_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
 control_info = ControlInfo(pid_cc, min_permitted_offset=min_distance_offset, target_velocity=target_velocity)
 world = World(client.get_world())
 controller = DualControl(control_info)
@@ -89,9 +93,9 @@ try:
     while control_info.running:
         # debug_utility.draw_radar_bounding_range(radar)
         # debug_utility.draw_radar_point_cloud_range(radar, radar_detection_h_radius, radar_detection_v_radius)
-        if(time.time() - lastUpdate > update_frequency):
-            if control_info.pid_cc:
-                pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth)           
+        if control_info.pid_cc:
+                pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth) 
+        if(time.time() - lastUpdate > update_frequency):          
             if send_info:
                 send_data({"velocity": ego_vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.get_acceleration().length()})
             if save_info:
