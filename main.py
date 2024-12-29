@@ -89,7 +89,7 @@ try:
         # debug_utility.draw_radar_point_cloud_range(radar, radar_detection_h_radius, radar_detection_v_radius)
         # control_info.reset_ego_control()
         if control_info.pid_cc:
-                pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth)      
+                pid_controller.apply_control(control_info, ego_vehicle.get_velocity().length() * 3.6, min_depth)      
         if(time.time() - lastUpdate > update_frequency):  
             # if control_info.pid_cc:
             #     pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth)        

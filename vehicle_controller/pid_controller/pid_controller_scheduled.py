@@ -35,13 +35,13 @@ class PIDController:
         self.update_frequency = tc
         self.last_update = 0
 
-    def apply_control(self, control_info, target_velocity, current_velocity, min_depth):
+    def apply_control(self, control_info, current_velocity, min_depth):
         if(time.time() - self.last_update > self.update_frequency):
             min_permitted_distance = carla_utility.compute_security_distance(current_velocity) + control_info.min_permitted_offset
             distance_error = min_depth - min_permitted_distance
             
             if distance_error > 0:
-                control_info.ego_control.throttle = self.__compute_pid_control_velocity(target_velocity, current_velocity)
+                control_info.ego_control.throttle = self.__compute_pid_control_velocity(control_info.target_velocity, current_velocity)
                 control_info.ego_control.brake = 0
             else:
                 control_info.ego_control.brake = self.__compute_pid_control_distance(min_permitted_distance, min_depth)
