@@ -2,14 +2,13 @@ import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'utility'))
 sys.path.append(os.path.join(os.path.dirname(__file__), 'mqtt_service'))
 
-import carla, time, pygame, cv2, debug_utility, carla_utility # type: ignore
-from log_utility import Logger # type: ignore
+import carla, time, pygame, cv2, debug_utility, carla_utility 
+from log_utility import Logger 
 import numpy as np
-from server import start_servers, send_data, close_servers # type: ignore
+from server import start_servers, send_data, close_servers
 from pid_controller_scheduled_adaptive import PIDController
 from manual_control import ControlInfo, DualControl, World
-import hud
-import plot_utility # type: ignore
+import plot_utility 
 
 send_info = False
 save_info = True
@@ -44,7 +43,7 @@ display = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
 pid_controller = PIDController(learning_rate, update_frequency, buffer_size=None) #add buffer_size = None to disable buffer
 control_info = ControlInfo(pid_cc, min_permitted_offset=min_distance_offset, target_velocity=target_velocity)
 world = World(client.get_world())
-controller = DualControl(world, False, control_info)
+controller = DualControl(control_info)
 # while True:
 #     continue
 # world = World(client.get_world())
@@ -105,7 +104,6 @@ try:
         
         world.apply_control(control_info.ego_control)
         other_vehicle.apply_control(control_info.target_control)
-        world.tick(clock=clock)
         world.render(display, control_info)
         pygame.display.flip()
 except KeyboardInterrupt:

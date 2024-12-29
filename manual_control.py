@@ -61,7 +61,7 @@ import math
 import random
 import re
 import weakref
-import hud
+
 
 if sys.version_info >= (3, 0):
 
@@ -149,13 +149,6 @@ def find_weather_presets():
     return [(getattr(carla.WeatherParameters, x), name(x)) for x in presets]
 
 
-def get_actor_display_name(actor, truncate=250):
-    name = ' '.join(actor.type_id.replace('_', '.').title().split('.')[1:])
-    return (name[:truncate - 1] + u'\u2026') if len(name) > truncate else name
-
-
-
-
 # ==============================================================================
 # -- World ---------------------------------------------------------------------
 # ==============================================================================
@@ -171,21 +164,18 @@ class World(object):
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
         self.restart()
-        # self.world.on_tick(hud.on_world_tick)
 
     def restart(self):
         carla_utility.destroy_all_vehicle_and_sensors(self.world)
-        print("Restarting world")
+        cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0
         # Keep same camera config if the camera manager exists.
         # Set up the sensors.
         # self.collision_sensor = CollisionSensor(self.player, self.hud)
         self.player = carla_utility.spawn_vehicle_bp_at(world=self.world, vehicle='vehicle.tesla.cybertruck', spawn_point=self.spawn_point)
         # self.camera_manager = CameraManager(self.player, self.hud)
-        self.camera_manager = CameraManager(self.player, None)
-        print("Restarting world")
-       
-        
+        self.camera_manager = CameraManager(self.player, cam_pos_index)
 
+       
     def apply_control(self, control):
         self.player.apply_control(control)
 
@@ -196,28 +186,9 @@ class World(object):
         self.hud.notification('Weather: %s' % preset[1])
         self.player.get_world().set_weather(preset[0])
 
-    def tick(self, clock):
-        # self.hud.tick(self, clock)
-        # TODO: mettere qua l'aggiornamento delle scritte
-        return
-
     def render(self, display, control_info):
         self.camera_manager.render(display, control_info)
-        # self.hud.render(display)
 
-    def destroy(self):
-        sensors = [
-            self.camera_manager.sensor,
-            # self.collision_sensor.sensor,
-            # self.lane_invasion_sensor.sensor,
-            # self.gnss_sensor.sensor
-            ]
-        for sensor in sensors:
-            if sensor is not None:
-                sensor.stop()
-                sensor.destroy()
-        if self.player is not None:
-            self.player.destroy()
 
 # ==============================================================================
 # -- DualControl -----------------------------------------------------------
@@ -225,21 +196,16 @@ class World(object):
 
 
 class DualControl(object):
-    def __init__(self, world, start_in_autopilot, control_info):
-        print("DualControl init")
-        self._autopilot_enabled = start_in_autopilot
+    def __init__(self, control_info):
         self._control_info = control_info
-        self._control = carla.VehicleControl()
-        # world.player.set_autopilot(self._autopilot_enabled)
+        self._control = control_info.ego_control
         self._steer_cache = 0.0
        
-
         # initialize steering wheel
         pygame.joystick.init()
         joystick_count = pygame.joystick.get_count()
         if joystick_count > 1:
             raise ValueError("Please Connect Just One Joystick")
-
         self._joystick = pygame.joystick.Joystick(0)
         self._joystick.init()
 
@@ -260,8 +226,8 @@ class DualControl(object):
                     world.restart()
                 elif event.button == 1:
                     world.hud.toggle_info()
-                # elif event.button == 2:
-                #     world.camera_manager.toggle_camera()
+                elif event.button == 2:
+                    world.camera_manager.toggle_camera()
                 elif event.button == 3:
                     world.next_weather()
                 elif event.button == self._reverse_idx:
@@ -273,6 +239,10 @@ class DualControl(object):
                     self._control_info.change_distance_offset()
                 elif event.button == 9: 
                     self._control_info.pid_cc = not self._control_info.pid_cc
+                    if not self._control_info.pid_cc:
+                        self._control_info.ego_control.throttle = 0.0
+                        self._control_info.ego_control.brake = 0.0
+                    
                 elif event.button == 22:
                     self._control_info.increase_target_velocity()
                 elif event.button == 21:
@@ -283,40 +253,28 @@ class DualControl(object):
                     return True
                 elif event.key == K_BACKSPACE:
                     world.restart()
-                elif event.key == K_F1:
-                    world.hud.toggle_info()
-                elif event.key == K_h or (event.key == K_SLASH and pygame.key.get_mods() & KMOD_SHIFT):
-                    world.hud.help.toggle()
                 elif event.key == K_TAB:
                     world.camera_manager.toggle_camera()
                 elif event.key == K_c and pygame.key.get_mods() & KMOD_SHIFT:
                     world.next_weather(reverse=True)
                 elif event.key == K_c:
                     world.next_weather()
-                elif event.key == K_BACKQUOTE:
-                    world.camera_manager.next_sensor()
-                elif event.key > K_0 and event.key <= K_9:
-                    world.camera_manager.set_sensor(event.key - 1 - K_0)
-                elif event.key == K_r:
-                    world.camera_manager.toggle_recording()
                 if event.key == K_q:
                     self._control.gear = 1 if self._control.reverse else -1
                 elif event.key == K_m:
                     self._control.manual_gear_shift = not self._control.manual_gear_shift
                     self._control.gear = world.player.get_control().gear
-                    world.hud.notification('%s Transmission' %
-                                            ('Manual' if self._control.manual_gear_shift else 'Automatic'))
+                    # world.hud.notification('%s Transmission' %('Manual' if self._control.manual_gear_shift else 'Automatic'))
                 elif self._control.manual_gear_shift and event.key == K_COMMA:
                     self._control.gear = max(-1, self._control.gear - 1)
                 elif self._control.manual_gear_shift and event.key == K_PERIOD:
                     self._control.gear = self._control.gear + 1
                 elif event.key == K_p:
-                    self._autopilot_enabled = not self._autopilot_enabled
-                    world.player.set_autopilot(self._autopilot_enabled)
-                    world.hud.notification('Autopilot %s' % ('On' if self._autopilot_enabled else 'Off'))
-
-        if not self._autopilot_enabled:
-            
+                    self._control_info.pid_cc = not self._control_info.pid_cc
+                    if not self._control_info.pid_cc:
+                        self._control_info.ego_control.throttle = 0.0
+                        self._control_info.ego_control.brake = 0.0
+    
             self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time())
             #self._parse_vehicle_wheel() #TODO "To drive start by preshing the brake pedal :')"
             self._control.reverse = self._control.gear < 0
@@ -324,9 +282,14 @@ class DualControl(object):
             self._control_info.ego_control = self._control # TODO: Dovrebbe bastare questo 
 
     def _parse_vehicle_keys(self, keys, milliseconds):
-        # if not self._control_info.pid_cc:
-        #     # print("PID CC is not enabled")
-        self._control.throttle = 1.0 if keys[K_UP] or keys[K_w] else 0.0
+        if keys[K_UP] or keys[K_w]:
+            self._control.throttle = 1.0
+            self._control.brake = 0.0
+        if keys[K_DOWN] or keys[K_s]:
+            self._control.throttle = 0.0
+            self._control.brake = 1.0
+            self._control_info.pid_cc = False
+        self._control.hand_brake = keys[K_SPACE]
         steer_increment = 5e-4 * milliseconds
         if keys[K_LEFT] or keys[K_a]:
             self._steer_cache -= steer_increment
@@ -336,11 +299,7 @@ class DualControl(object):
             self._steer_cache = 0.0
         self._steer_cache = min(0.7, max(-0.7, self._steer_cache))
         self._control.steer = round(self._steer_cache, 1)
-        if keys[K_DOWN] or keys[K_s]:
-            self._control.brake = 1.0
-            self._control_info.pid_cc = False
-        # self._control.brake = 1.0 if keys[K_DOWN] or keys[K_s] else 0.0
-        self._control.hand_brake = keys[K_SPACE]
+        
 
     def _parse_vehicle_wheel(self):
         numAxes = self._joystick.get_numaxes()
@@ -381,9 +340,6 @@ class DualControl(object):
         elif brakeCmd > 1:
             brakeCmd = 1
 
-    
-            
-        print(f"Steer: {steerCmd}, Throttle: {throttleCmd}, Brake: {brakeCmd}")
         self._control.steer = steerCmd
         self._control.brake = brakeCmd
         self._control.throttle = throttleCmd
@@ -403,49 +359,57 @@ class DualControl(object):
 
 
 class CameraManager(object):
-    def __init__(self, parent_actor, hud=None):
+    def __init__(self, parent_actor, transform_index):
         self.sensor = None
         self.surface = None
         self._parent = parent_actor
+        self._camera_transforms = [
+            carla.Transform(carla.Location(x=-5.5, z=2.8), carla.Rotation(pitch=-15)),
+            carla.Transform(carla.Location(x=1.6, z=1.7))]
+        self.transform_index = transform_index
         # self.hud = hud
         self.sensors = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
         self.sensors.append(self._parent.get_world().get_blueprint_library().find(self.sensors[0]))
         self.sensors[-1].set_attribute('image_size_x', "1280")
         self.sensors[-1].set_attribute('image_size_y', "720")
-            # if item[0].startswith('sensor.camera'):
-            #     bp.set_attribute('image_size_x', str(hud.dim[0]))
-            #     bp.set_attribute('image_size_y', str(hud.dim[1]))
+        # if item[0].startswith('sensor.camera'):
+        #     bp.set_attribute('image_size_x', str(hud.dim[0]))
+        #     bp.set_attribute('image_size_y', str(hud.dim[1]))
 
+        self.__spawn_camera()    
+
+    def __spawn_camera(self):
         self.sensor = self._parent.get_world().spawn_actor(
             self.sensors[-1],
-            carla.Transform(carla.Location(x=-5.5, z=2.8), carla.Rotation(pitch=-15)),
+            self._camera_transforms[self.transform_index],
             attach_to=self._parent)
-            # We need to pass the lambda a weak reference to self to avoid
-            # circular reference.
+        # We need to pass the lambda a weak reference to self to avoid
+        # circular reference.
         weak_self = weakref.ref(self)
-        self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image))    
+        self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image))
 
     #change camera view
+    def toggle_camera(self):
+        self.transform_index = (self.transform_index + 1) % len(self._camera_transforms)
+        self.sensor.destroy()
+        self.__spawn_camera()
     
-    def print_text_to_screen(self, display, text, position, color):
+    def __print_text_to_screen(self, display, text, position, color):
         font = pygame.font.Font(None, 36)  # You can choose the font and size
         text_surface = font.render(text, True, color)  # White color
         display.blit(text_surface, position)
-
-    def toggle_recording(self):
-        self.recording = not self.recording
 
     def render(self, display, control_info):
         if self.surface is not None:
             scaled_surface = pygame.transform.scale(self.surface, display.get_size())
             display.blit(scaled_surface, (0, 0))
-        self.print_text_to_screen(display, f"Throttle: {control_info.ego_control.throttle}", (10, 10), (255, 255, 255))
-        self.print_text_to_screen(display, f"Brake: {control_info.ego_control.brake}", (10, 50), (255, 255, 255))
-        self.print_text_to_screen(display, f"Steer: {control_info.ego_control.steer}", (10, 90), (255, 255, 255))
-        self.print_text_to_screen(display, f"Hand Brake: {control_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
-        self.print_text_to_screen(display, f"PID CC: {control_info.pid_cc}", (10, 170), (255, 255, 255))
-        self.print_text_to_screen(display, f"Min Permitted Distance: {control_info.min_permitted_offset}", (10, 210), (255, 255, 255))
-        self.print_text_to_screen(display, f"Target Velocity: {control_info.target_velocity}", (10, 250), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Throttle: {control_info.ego_control.throttle}", (10, 10), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Brake: {control_info.ego_control.brake}", (10, 50), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Steer: {control_info.ego_control.steer}", (10, 90), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Hand Brake: {control_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
+        self.__print_text_to_screen(display, f"PID CC: {control_info.pid_cc}", (10, 170), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Min Permitted Distance: {control_info.min_permitted_offset}", (10, 210), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Target Velocity: {control_info.target_velocity}", (10, 250), (255, 255, 255))
 
     @staticmethod
     def _parse_image(weak_self, image):

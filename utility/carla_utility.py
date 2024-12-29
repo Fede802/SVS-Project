@@ -64,6 +64,7 @@ def destroy_all_vehicle_and_sensors(world):
     for v in world.get_actors().filter('vehicle.*'):
         v.destroy()
     for v in world.get_actors().filter('sensor.*'):
+        v.stop()
         v.destroy()
 
 def __setup_spectactor(spectator, spawn_point: carla.Transform):
