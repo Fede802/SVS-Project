@@ -9,7 +9,7 @@ import carla_utility
 
 class AccEnv(gym.Env):
     
-    MAX_TARGET_VELOCITY = 130
+    MAX_TARGET_VELOCITY = 150
     TARGET_VELOCITY = -1 #set randomly in reset or with setter
     TARGET_FRONT_VELOCITY = -1
     RADAR_RANGE_OFFSET = 20
@@ -138,9 +138,9 @@ class AccEnv(gym.Env):
             return -abs(observation[0] - observation[1])/10
        
     def _check_done(self, observation):
-        # self.step_count += 1
-        # if self.step_count > 1024:
-        #     self.step_count = 0
-        #     carla_utility.destroy_all_vehicle_and_sensors(self.world) #to avoid spawning bugs
-        #     return True
+        self.step_count += 1
+        if self.step_count > 1024:
+            self.step_count = 0
+            carla_utility.destroy_all_vehicle_and_sensors(self.world) #to avoid spawning bugs
+            return True
         return False

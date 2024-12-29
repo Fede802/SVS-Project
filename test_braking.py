@@ -49,24 +49,26 @@ print(obs)
 iteration = 0
 flag = False
 while True:
-    if iteration == 1000 and not flag:
-        env.setTargetFrontSpeed(0)
-        env.update_front()
-        flag = True
-        iteration = 0
-    elif iteration <= 400 and flag:
-        print(iteration)
-        env.setTargetFrontSpeed(iteration/10)
-        env.update_front()
-    elif iteration > 400 and flag:    
-        flag = False
-        iteration = 0
+    # if iteration == 1000 and not flag:
+    #     env.setTargetFrontSpeed(0)
+    #     env.update_front()
+    #     flag = True
+    #     iteration = 0
+    # elif iteration <= 400 and flag:
+    #     print(iteration)
+    #     env.setTargetFrontSpeed(iteration/10)
+    #     env.update_front()
+    # elif iteration > 400 and flag:    
+    #     flag = False
+    #     iteration = 0
 
-    iteration += 1        
+    # iteration += 1        
 
         
     action, _states = trainedModel.predict(obs, deterministic=True)
     obs, rewards, dones, info = trainedModel.get_env().step(action)
+    if dones:
+        obs = trainedModel.get_env().reset()
 
 
 # Clean up the environment
