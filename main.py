@@ -1,21 +1,18 @@
 import sys, os
-
 sys.path.append(os.path.join(os.path.dirname(__file__), 'utility'))
 sys.path.append(os.path.join(os.path.dirname(__file__), 'mqtt_service'))
 
 import carla, time, pygame, cv2, debug_utility, carla_utility 
 from log_utility import Logger 
-import numpy as np
-from server import start_servers, send_data, close_servers
+import server
 from vehicle_controller.pid_controller import pid_controller_random_adaptive, pid_controller_scheduled_adaptive, pid_controller_random, pid_controller_scheduled
-from manual_control import ControlInfo, DualControl, World
+from manual_control import ControlInfo, DualControl, CameraManager
 import plot_utility 
 
 send_info = False
 save_info = True
 show_log = False
 show_in_carla = False
-
 pid_cc = False
 update_frequency = 0.01 #seconds
 
@@ -26,37 +23,29 @@ radar_range_offset = 20
 radar_range = carla_utility.compute_security_distance(max_target_velocity) + radar_range_offset
 target_velocity = 90
 min_distance_offset = 7
-min_permitted_distance = min_distance_offset
 learning_rate = 0.003
 
-if send_info:
-    start_servers()
-
-client = carla.Client('localhost', 2000)
-client.set_timeout(30.0)
-
 spawn_point = carla.Transform(carla.Location(x=2388, y=6164, z=187), carla.Rotation(yaw = -88.2))
+
+if send_info:
+    server.start_servers()
+
+
+
+
 pygame.init()
 pygame.font.init()
-# pygame.display.set_mode((400, 300))
 display = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
-#hud = hud.HUD(1280, 720)
+
 pid_controller = pid_controller_random_adaptive.PIDController(learning_rate) #add buffer_size = None to disable buffer
 pid_controller = pid_controller_scheduled_adaptive.PIDController(learning_rate, update_frequency) #add buffer_size = None to disable buffer
 pid_controller = pid_controller_random.PIDController() #add buffer_size = None to disable buffer
 pid_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
-control_info = ControlInfo(pid_cc, min_permitted_offset=min_distance_offset, target_velocity=target_velocity)
-world = World(client.get_world())
-controller = DualControl(control_info)
-# while True:
-#     continue
-# world = World(client.get_world())
-# controller = DualControl(world, False, control_info)
+
+
 
 clock = pygame.time.Clock()
-# spectator = world.world.get_spectator()
 
-# world.restart() #to avoid spawning bugs
 
 
 
@@ -75,20 +64,23 @@ def radar_callback(data: carla.RadarMeasurement, radar: carla.Actor):
                 min_depth = detection.depth
 
 
+def restart():
+    global ego_vehicle, other_vehicle, camera_manager, control_info
+    carla_utility.destroy_all_vehicle_and_sensors()
+    control_info = ControlInfo(pid_cc, min_permitted_offset=min_distance_offset, target_velocity=target_velocity)
+    ego_vehicle = carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=spawn_point)
+    camera_manager = CameraManager(ego_vehicle)
+    radar = carla_utility.spawn_radar(ego_vehicle, range=radar_range)
+    radar.listen(lambda data: radar_callback(data, radar))
+    carla_utility.move_spectator_to(ego_vehicle.get_transform())
+    other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
 
-ego_vehicle = world.player
-radar = carla_utility.spawn_radar(world.world, ego_vehicle, range=radar_range)
-radar.listen(lambda data: radar_callback(data, radar))
-# carla_utility.move_spectator_to(spectator, ego_vehicle.get_transform())
-
-other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(world.world, ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
-
-
-
+controller = DualControl(restart_callback=restart)
 
 logger = Logger()
 lastUpdate = 0
 
+restart()
 try:
     while control_info.running:
         # debug_utility.draw_radar_bounding_range(radar)
@@ -97,28 +89,28 @@ try:
                 pid_controller.apply_control(control_info, target_velocity, ego_vehicle.get_velocity().length() * 3.6, min_depth) 
         if(time.time() - lastUpdate > update_frequency):          
             if send_info:
-                send_data({"velocity": ego_vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.get_acceleration().length()})
+                server.send_data({"velocity": ego_vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.get_acceleration().length()})
             if save_info:
                 logger.write(str(ego_vehicle.get_velocity().length() * 3.6)+ "," + str(ego_vehicle.get_acceleration().length())+ "," +str(control_info.ego_control.throttle)+ "," +str(control_info.ego_control.brake))
             lastUpdate = time.time()
 
         clock.tick_busy_loop(120)
-        if controller.parse_events(world, clock):
+        if controller.parse_events(camera_manager, control_info, clock):
             break
         
-        world.apply_control(control_info.ego_control)
+        ego_vehicle.apply_control(control_info.ego_control)
         other_vehicle.apply_control(control_info.target_control)
-        world.render(display, control_info)
+        camera_manager.render(display, control_info)
         pygame.display.flip()
 except KeyboardInterrupt:
     pass
 finally:
     pygame.quit()
     cv2.destroyAllWindows()
-    carla_utility.destroy_all_vehicle_and_sensors(client.get_world()) 
+    carla_utility.destroy_all_vehicle_and_sensors() 
     logger.close() 
     if send_info: 
-        close_servers()
+        server.close_servers()
     if show_log:
         plot_utility.plot_last_run()    
 
