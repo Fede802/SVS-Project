@@ -49,7 +49,7 @@ def restart():
     radar = carla_utility.spawn_radar(ego_vehicle, range=radar_range)
     radar.listen(lambda data: radar_callback(data, radar))
     carla_utility.move_spectator_to(ego_vehicle.get_transform())
-    # other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
+    other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
 
 send_info and server.start_servers()
 pygame.init()
@@ -63,8 +63,8 @@ lastUpdate = 0
 # ego_controller = pid_controller_random_adaptive.PIDController(learning_rate) #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled_adaptive.PIDController(learning_rate, update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_random.PIDController() #add buffer_size = None to disable buffer
-ego_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
-# ego_controller = rl_controller.RLController()
+# ego_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
+ego_controller = rl_controller.RLController()
 
 restart()
 try:
@@ -86,7 +86,7 @@ try:
             break
 
         ego_vehicle.apply_control(control_info.ego_control)
-        # other_vehicle.apply_control(control_info.target_control)
+        other_vehicle.apply_control(control_info.target_control)
         camera_manager.render(display, control_info, ego_vehicle)
         pygame.display.flip()
 except KeyboardInterrupt:
