@@ -35,36 +35,27 @@ class PIDController:
         self.update_frequency = tc
         self.last_update = 0
 
+    def __reset(self):
+        self.last_throttle = 0 
+        self.last_brake = 0 
+
     def apply_control(self, control_info, current_velocity, min_depth):
+        if control_info.reset:
+            self.__reset()
+            control_info.reset = False
+            
         if(time.time() - self.last_update > self.update_frequency):
             min_permitted_distance = carla_utility.compute_security_distance(current_velocity) + control_info.min_permitted_offset
             distance_error = min_depth - min_permitted_distance
-            
             if distance_error > 0:
-                control_info.ego_control.throttle = self.__compute_pid_control_velocity(control_info.target_velocity, current_velocity)
-                control_info.ego_control.brake = 0
+                self.last_throttle = self.pid_velocity.compute_control(control_info.target_velocity, current_velocity)
+                control_info.ego_control.throttle = self.last_throttle
             else:
-                control_info.ego_control.brake = self.__compute_pid_control_distance(min_permitted_distance, min_depth)
-                control_info.ego_control.throttle = 0
-            self.last_update = time.time()      
+                self.last_brake = self.pid_distance.compute_control(min_permitted_distance, min_depth)
+                control_info.ego_control.brake = self.last_brake
 
-    def __compute_pid_control_velocity(self, target_velocity, current_velocity):
-        """
-        Compute the throttle control based on PID equations for velocity.
-        
-        :param target_velocity: Target velocity in Km/h
-        :param current_velocity: Current velocity of the vehicle in Km/h
-        :return: Throttle control in the range [0, 1]
-        """
-        return self.pid_velocity.compute_control(target_velocity, current_velocity)
-
-    def __compute_pid_control_distance(self, min_permitted_distance, current_distance):
-        """
-        Compute the brake control based on PID equations for distance.
-        
-        :param min_permitted_distance: Minimum permitted distance from the vehicle in front
-        :param current_distance: Current distance from the vehicle in front
-        :return: Brake control in the range [0, 1]
-        """
-        return self.pid_distance.compute_control(min_permitted_distance, current_distance)
+            self.last_update = time.time()
+        else:
+            control_info.ego_control.throttle = self.last_throttle
+            control_info.ego_control.brake = self.last_brake
     

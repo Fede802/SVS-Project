@@ -111,16 +111,16 @@ except ImportError:
 
 class ControlInfo:
     def __init__(self, pid_cc=False, ego_control=carla.VehicleControl(), target_control=carla.VehicleControl(), min_permitted_offset=7, target_velocity=90):
-        self.pid_cc = pid_cc
+        self.__pid_cc = pid_cc
         self.ego_control = ego_control
         self.target_control = target_control
         self.running = True
         self.min_permitted_offset = min_permitted_offset
         self.target_velocity = target_velocity
+        self.reset = False
         
-
     def __str__(self):
-        return f"ego_control: {self.ego_control}, target_control: {self.target_control}, pid_cc: {self.pid_cc}, running: {self.running}"
+        return f"ego_control: {self.ego_control}, target_control: {self.target_control}, pid_cc: {self.__pid_cc}, running: {self.running}"
 
     def reset_ego_control(self):
         self.ego_control = carla.VehicleControl()
@@ -133,6 +133,17 @@ class ControlInfo:
     
     def decrease_target_velocity(self):
         self.target_velocity -= 1 if self.target_velocity > 30 else 0
+
+    def pid_cc(self):
+        return self.__pid_cc
+
+    def set_pid_cc(self, pid_cc):
+        self.__pid_cc = pid_cc
+        self.reset = True
+
+    def toggle_pid(self):
+        self.set_pid_cc(not self.__pid_cc)
+
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
@@ -230,8 +241,8 @@ class DualControl(object):
                     # TODO: mettere toggle distanza
                     control_info.change_distance_offset()
                 elif event.button == 9: 
-                    control_info.pid_cc = not control_info.pid_cc
-                    if not control_info.pid_cc:
+                    control_info.toggle_pid()
+                    if not control_info.pid_cc():
                         control_info.ego_control.throttle = 0.0
                         control_info.ego_control.brake = 0.0
                     
@@ -262,8 +273,8 @@ class DualControl(object):
                 elif control.manual_gear_shift and event.key == K_PERIOD:
                     control.gear = control.gear + 1
                 elif event.key == K_p:
-                    control_info.pid_cc = not control_info.pid_cc
-                    if not control_info.pid_cc:
+                    control_info.toggle_pid()
+                    if not control_info.pid_cc():
                         control_info.ego_control.throttle = 0.0
                         control_info.ego_control.brake = 0.0
                 elif event.key == pygame.K_PLUS:
@@ -287,7 +298,7 @@ class DualControl(object):
         if keys[K_s]:
             control.throttle = 0.0
             control.brake = 1.0
-            control_info.pid_cc = False
+            control_info.set_pid_cc(False)
         if keys[K_UP]:
             control2.throttle = 1.0
             control2.brake = 0.0
@@ -297,11 +308,15 @@ class DualControl(object):
         control.hand_brake = keys[K_SPACE]
         steer_increment = 5e-4 * milliseconds
         if keys[K_LEFT] or keys[K_a]:
+            print("left", steer_increment)
             self._steer_cache -= steer_increment
         elif keys[K_RIGHT] or keys[K_d]:
+            print("right", steer_increment)
             self._steer_cache += steer_increment
         else:
+            print("center", steer_increment)
             self._steer_cache = 0.0
+        print(self._steer_cache)    
         self._steer_cache = min(0.7, max(-0.7, self._steer_cache))
         control.steer = round(self._steer_cache, 1)
         
@@ -344,7 +359,9 @@ class DualControl(object):
             brakeCmd = 0
         elif brakeCmd > 1:
             brakeCmd = 1
-
+            
+        if brakeCmd != 0:
+            control.toggle_pid()
         control.steer = steerCmd
         control.brake = brakeCmd
         control.throttle = throttleCmd
@@ -388,10 +405,8 @@ class CameraManager(object):
             self.sensors[-1],
             self._camera_transforms[self.transform_index],
             attach_to=self._parent)
-        # We need to pass the lambda a weak reference to self to avoid
-        # circular reference.
-        weak_self = weakref.ref(self)
-        self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image))
+    
+        self.sensor.listen(self._parse_image)
 
     #change camera view
     def toggle_camera(self):
@@ -412,16 +427,13 @@ class CameraManager(object):
         self.__print_text_to_screen(display, f"Brake: {control_info.ego_control.brake}", (10, 50), (255, 255, 255))
         self.__print_text_to_screen(display, f"Steer: {control_info.ego_control.steer}", (10, 90), (255, 255, 255))
         self.__print_text_to_screen(display, f"Hand Brake: {control_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
-        self.__print_text_to_screen(display, f"PID CC: {control_info.pid_cc}", (10, 170), (255, 255, 255))
+        self.__print_text_to_screen(display, f"PID CC: {control_info.pid_cc()}", (10, 170), (255, 255, 255))
         self.__print_text_to_screen(display, f"Min Permitted Distance: {control_info.min_permitted_offset}", (10, 210), (255, 255, 255))
         self.__print_text_to_screen(display, f"Target Velocity: {ego_veichle.get_velocity().length() * 3.6}", (10, 250), (255, 255, 255))
         self.__print_text_to_screen(display, f"Target Velocity: {control_info.target_velocity}", (10, 290), (255, 255, 255))
 
-    @staticmethod
-    def _parse_image(weak_self, image):
-        self = weak_self()
-        if not self:
-            return
+    
+    def _parse_image(self, image):
         image.convert(self.sensors[1])
         array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
         array = np.reshape(array, (image.height, image.width, 4))
