@@ -27,19 +27,23 @@ learning_rate = 0.003
 spawn_point = carla.Transform(carla.Location(x=2388, y=6164, z=187), carla.Rotation(yaw = -88.2))
 
 def radar_callback(data: carla.RadarMeasurement, radar: carla.Actor):
-    global min_ttc, min_depth
+    global min_ttc, min_depth, relative_velocity
     min_ttc = min_depth = float('inf')
-    for detection, i in zip(data, range(len(data))):
-        absolute_velocity = abs(detection.velocity)
-        if debug_utility.evaluate_point(radar, detection, radar_detection_h_radius, radar_detection_v_radius):
-            # debug_utility.draw_radar_point(radar, detection)
-            if absolute_velocity != 0:
-                ttc = detection.depth / absolute_velocity
-                if ttc < min_ttc:
-                    min_ttc = ttc
-            if detection.depth < min_depth:
-                min_depth = detection.depth
+    distances = []
+    velocities = []
+    ttc = []
 
+    for detection in data:
+        if debug_utility.evaluate_point(radar, detection, radar_detection_h_radius, radar_detection_v_radius):
+            #debug_utility.draw_radar_point(self.radar_sensor, detection)
+            distances.append(detection.depth)
+            velocities.append(detection.velocity)
+            ttc.append(detection.depth / abs(detection.velocity) if abs(detection.velocity) != 0 else float('inf'))
+    min_ttc = min(ttc) if len(ttc) > 0 else float('inf')
+    # min distance corresponding to distance at min_ttc index
+    min_depth = distances[ttc.index(min_ttc)] if len(distances) > 0 else float('inf')
+    relative_velocity = velocities[ttc.index(min_ttc)] if len(velocities) > 0 else 0
+    
 def restart():
     global ego_vehicle, other_vehicle, camera_manager, control_info
     carla_utility.destroy_all_vehicle_and_sensors()
@@ -72,6 +76,8 @@ try:
         # debug_utility.draw_radar_bounding_range(radar)
         # debug_utility.draw_radar_point_cloud_range(radar, radar_detection_h_radius, radar_detection_v_radius)
         control_info.reset_ego_control() #comment to make keyboard unrensponsive
+        control_info.reset_other_vehicle_control()
+        control_info.obstacle_relative_velocity = relative_velocity * 3.6
         if control_info.cc():
             ego_controller.apply_control(control_info, ego_vehicle.get_velocity().length() * 3.6, min_depth)      
         if(time.time() - lastUpdate > update_frequency):  
@@ -86,7 +92,7 @@ try:
             break
 
         ego_vehicle.apply_control(control_info.ego_control)
-        other_vehicle.apply_control(control_info.target_control)
+        other_vehicle.apply_control(control_info.other_vehicle_control)
         camera_manager.render(display, control_info, ego_vehicle)
         pygame.display.flip()
 except KeyboardInterrupt:
