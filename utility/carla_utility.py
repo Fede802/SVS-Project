@@ -24,7 +24,7 @@ def next_weather(reverse=False):
 def __spawn_actor(blueprint, spawn_point: carla.Transform, attach_to: carla.Actor = None):
     __setup_spectactor(carla.Transform(math_utility.add(spawn_point.location, attach_to.get_location() if attach_to != None else carla.Location())))
     actor = world.spawn_actor(blueprint, spawn_point, attach_to)
-    time.sleep(10)
+    time.sleep(3)
     return actor
 
 def __transform_vector(point: carla.Transform, transform: carla.Transform):
@@ -143,7 +143,7 @@ class CameraManager(object):
         text_surface = font.render(text, True, color)  # White color
         display.blit(text_surface, position)
 
-    def render(self, display, control_info, ego_veichle: carla.Vehicle):
+    def render(self, display, control_info, ego_vehicle: carla.Vehicle):
         if self.surface is not None:
             scaled_surface = pygame.transform.scale(self.surface, display.get_size())
             display.blit(scaled_surface, (0, 0))
@@ -153,8 +153,10 @@ class CameraManager(object):
         self.__print_text_to_screen(display, f"Hand Brake: {control_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
         self.__print_text_to_screen(display, f"PID CC: {control_info.cc()}", (10, 170), (255, 255, 255))
         self.__print_text_to_screen(display, f"Min Permitted Distance: {control_info.min_permitted_offset}", (10, 210), (255, 255, 255))
-        self.__print_text_to_screen(display, f"Target Velocity: {ego_veichle.get_velocity().length() * 3.6}", (10, 250), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Ego Velocity: {ego_vehicle.get_velocity().length() * 3.6}", (10, 250), (255, 255, 255))
         self.__print_text_to_screen(display, f"Target Velocity: {control_info.target_velocity}", (10, 290), (255, 255, 255))
+        other_vehicle_velocity = ego_vehicle.get_velocity().length() * 3.6 + control_info.obstacle_relative_velocity
+        self.__print_text_to_screen(display, f"Obstacle Velocity: {other_vehicle_velocity}", (10, 330), (255, 255, 255))
 
     def _parse_image(self, image):
         image.convert(self.sensors[1])

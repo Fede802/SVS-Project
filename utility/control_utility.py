@@ -43,20 +43,24 @@ from pygame.locals import K_s
 from pygame.locals import K_w
 
 class ControlInfo:
-    def __init__(self, cc=False, ego_control=carla.VehicleControl(), target_control=carla.VehicleControl(), min_permitted_offset=7, target_velocity=90):
+    def __init__(self, cc=False, ego_control=carla.VehicleControl(), other_vehicle_control=carla.VehicleControl(), min_permitted_offset=7, target_velocity=90, obstacle_relative_velocity=0):
         self.__cc = cc
         self.ego_control = ego_control
-        self.target_control = target_control
+        self.other_vehicle_control = other_vehicle_control
         self.running = True
         self.min_permitted_offset = min_permitted_offset
         self.target_velocity = target_velocity
         self.reset = False
+        self.obstacle_relative_velocity = obstacle_relative_velocity
         
     def __str__(self):
-        return f"ego_control: {self.ego_control}, target_control: {self.target_control}, cc: {self.__cc}, running: {self.running}"
+        return f"ego_control: {self.ego_control}, other_vehicle_control: {self.other_vehicle_control}, cc: {self.__cc}, running: {self.running}"
 
     def reset_ego_control(self):
         self.ego_control = carla.VehicleControl()
+
+    def reset_other_vehicle_control(self):
+        self.other_vehicle_control = carla.VehicleControl()
 
     def change_distance_offset(self):
         self.min_permitted_offset = (self.min_permitted_offset + 7) % 21
@@ -170,7 +174,7 @@ class DualControl(object):
 
     def _parse_vehicle_keys(self, keys, milliseconds, control_info):
         control = control_info.ego_control
-        control2 = control_info.target_control
+        control2 = control_info.other_vehicle_control
         if keys[K_w]:
             control.throttle = 1.0
             control.brake = 0.0
