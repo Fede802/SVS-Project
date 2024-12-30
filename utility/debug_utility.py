@@ -55,7 +55,7 @@ def draw_radar_point_cloud_range(radar: carla.Actor, h_radius, v_radius, life_ti
     debug.draw_line(p4, p8, life_time=life_time, color=color)
    
 def evaluate_point(radar: carla.Actor, detection: carla.RadarDetection, h_radius, v_radius):
-    radar_range = int(radar.attributes.get('range'))
+    radar_range = int(float(radar.attributes.get('range')))
 
     x = detection.depth * math.cos(detection.azimuth) * math.cos(detection.altitude)
     y = detection.depth * math.sin(detection.azimuth) * math.cos(detection.altitude)

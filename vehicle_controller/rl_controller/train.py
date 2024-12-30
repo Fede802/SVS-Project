@@ -10,7 +10,7 @@ from env import env_cc, env_braking, env_braking2, env_braking3
 env = env_braking3.GymEnv() #could be wrapped with VecMonitor to make additional check on observation coerence but okay
 
 n_steps = 1024
-n_epochs = 500
+n_epochs = 1024
 
 model = PPO(
     "MlpPolicy", 
