@@ -30,3 +30,19 @@ Acc Schema Image:
 
 env step call
 reward piccoli
+
+
+
+## TODO
+- [ ] Multi-radar
+- [ ] Traffico superstrada
+- [ ] Traffico di carla (test)
+- [ ] Improvement al "HUD"
+- [ ] Testare i pedali e resize in lab
+- [ ] Sterzo a other vehicle
+- [ ] Aggiustare spawn scenario base
+- [ ] Movimento dinamico dello spettare di carla (avvicinamento al veicolo)
+- [ ] Aggiustare camera di carla (più dritto)
+- [ ] Opt: Collision Sensor con scritte dinamiche
+- [ ] Opt: braking model con 1/ttc invece della distanza
+
