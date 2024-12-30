@@ -23,7 +23,7 @@ def next_weather(reverse=False):
     world.set_weather(preset[0])
 
 def __spawn_actor(blueprint, spawn_point: carla.Transform, attach_to: carla.Actor = None):
-    __setup_spectactor(carla.Transform(math_utility.add(spawn_point.location, attach_to.get_location() if attach_to != None else carla.Location())))
+    __setup_spectator(carla.Transform(math_utility.add(spawn_point.location, attach_to.get_location() if attach_to != None else carla.Location())))
     actor = world.spawn_actor(blueprint, spawn_point, attach_to)
     time.sleep(3)
     return actor
@@ -92,7 +92,7 @@ def destroy_all_vehicle_and_sensors():
         v.destroy()
     time.sleep(2)    
 
-def __setup_spectactor(spawn_point: carla.Transform):
+def __setup_spectator(spawn_point: carla.Transform):
     #try go back to 1000
     if math_utility.sub(spectator.get_location(), spawn_point.location).length() > 2000:
         spectator.set_transform(spawn_point)
@@ -100,12 +100,12 @@ def __setup_spectactor(spawn_point: carla.Transform):
 
 def setup_spectator(world: carla.World, spawn_point: carla.Transform):
     spectator = world.get_spectator()
-    __setup_spectactor(spectator, spawn_point)        
+    __setup_spectator(spectator, spawn_point)        
 
 def compute_security_distance(velocity):
     return (velocity // 10) ** 2
 
-class VeichleWithRadar:
+class VehicleWithRadar:
     def __init__(self, vehicle, radar_range, radar_detection_h_radius, radar_detection_v_radius, veichle_controller, show_detection=False, show_range=False, show_filter=False):
         self.vehicle = vehicle
         self.radar_detection_h_radius = radar_detection_h_radius
@@ -135,17 +135,26 @@ class VeichleWithRadar:
 
     def compute_control(self):
         if self.acc_info.is_active():
-            self.veichle_control = self.vehicle_controller.apply_control(self.acc_info, self.vehicle.get_velocity().length() * 3.6, self.min_depth)
+            self.vehicle_control = self.vehicle_controller.apply_control(self.acc_info, self.vehicle.get_velocity().length() * 3.6, self.min_depth)
         else:
-            self.veichle_control = carla.VehicleControl()
-        return self.veichle_control
+            self.vehicle_control = carla.VehicleControl()
+        return self.vehicle_control
     
     def apply_control(self):
-        self.vehicle.apply_control(self.veichle_control)
+        self.vehicle.apply_control(self.vehicle_control)
 
     def compute_and_apply_control(self):
         self.compute_control()
         self.apply_control() 
+
+    def get_location(self):
+        return self.vehicle.get_location()
+    
+    def get_velocity(self):
+        return self.vehicle.get_velocity()
+    
+    def get_transform(self):
+        return self.vehicle.get_transform()
 
 class CameraManager(object):
     def __init__(self, parent_actor, transform_index = 0):

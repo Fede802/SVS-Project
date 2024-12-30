@@ -7,7 +7,7 @@ from log_utility import Logger
 from vehicle_controller.pid_controller import pid_controller_random_adaptive, pid_controller_scheduled_adaptive, pid_controller_random, pid_controller_scheduled
 from vehicle_controller.rl_controller import rl_controller
 from control_utility import ControlInfo, DualControl, ACCInfo
-from carla_utility import CameraManager, VeichleWithRadar
+from carla_utility import CameraManager, VehicleWithRadar
 
 send_info = False
 save_info = False
@@ -31,7 +31,7 @@ def restart():
     carla_utility.destroy_all_vehicle_and_sensors()
     acc_info = ACCInfo(cc, min_permitted_offset=min_distance_offset, target_velocity=target_velocity)
     control_info = ControlInfo(acc_info)
-    ego_vehicle = VeichleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=spawn_point), radar_range, radar_detection_h_radius, radar_detection_v_radius, ego_controller)
+    ego_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=spawn_point), radar_range, radar_detection_h_radius, radar_detection_v_radius, ego_controller)
     ego_vehicle.acc_info = acc_info
     camera_manager = CameraManager(ego_vehicle.vehicle)
     carla_utility.move_spectator_to(ego_vehicle.vehicle.get_transform())
