@@ -1,5 +1,5 @@
 from stable_baselines3 import PPO
-import os, carla_utility
+import os, carla_utility, carla
 
 class RLController:
     def __init__(self):
@@ -12,9 +12,9 @@ class RLController:
         distance_error = min_depth - min_permitted_distance
         if distance_error > 0:
             action, _ = self.rl_velocity.predict([control_info.target_velocity, current_velocity], deterministic=True)
-            control_info.ego_control.brake = 0
         else:
             action, _ = self.rl_distance.predict([min_permitted_distance, min_depth], deterministic=True)
         action = action[0]
-        control_info.ego_control.throttle = action if action >= 0 else 0
-        control_info.ego_control.brake = -action if action < 0 else 0    
+        throttle = action if action >= 0 else 0
+        brake = -action if action < 0 else 0
+        return carla.VehicleControl(throttle = throttle, brake = brake)

@@ -42,25 +42,12 @@ from pygame.locals import K_r
 from pygame.locals import K_s
 from pygame.locals import K_w
 
-class ControlInfo:
-    def __init__(self, cc=False, ego_control=carla.VehicleControl(), other_vehicle_control=carla.VehicleControl(), min_permitted_offset=7, target_velocity=90, obstacle_relative_velocity=0):
-        self.__cc = cc
-        self.ego_control = ego_control
-        self.other_vehicle_control = other_vehicle_control
-        self.running = True
-        self.min_permitted_offset = min_permitted_offset
+class ACCInfo:
+    def __init__(self, active = False, target_velocity = None, min_permitted_offset = None, reset = False):
+        self.__active = active
         self.target_velocity = target_velocity
-        self.reset = False
-        self.obstacle_relative_velocity = obstacle_relative_velocity
-        
-    def __str__(self):
-        return f"ego_control: {self.ego_control}, other_vehicle_control: {self.other_vehicle_control}, cc: {self.__cc}, running: {self.running}"
-
-    def reset_ego_control(self):
-        self.ego_control = carla.VehicleControl()
-
-    def reset_other_vehicle_control(self):
-        self.other_vehicle_control = carla.VehicleControl()
+        self.min_permitted_offset = min_permitted_offset
+        self.reset = reset
 
     def change_distance_offset(self):
         self.min_permitted_offset = (self.min_permitted_offset) % 21 + 7
@@ -71,15 +58,26 @@ class ControlInfo:
     def decrease_target_velocity(self):
         self.target_velocity -= 1 if self.target_velocity > 30 else 0
 
-    def cc(self):
-        return self.__cc
+    def is_active(self):
+        return self.__active
 
-    def set_cc(self, cc):
-        self.__cc = cc
+    def set_active(self, active):
+        self.__active = active
         self.reset = True
 
-    def toggle_pid(self):
-        self.set_cc(not self.__cc)
+    def toggle_acc(self): 
+        self.set_active(not self.__active)
+ 
+class ControlInfo:
+    def __init__(self, acc_info):
+        self.acc_info = acc_info
+        self.ego_control = carla.VehicleControl()
+        self.other_vehicle_control = carla.VehicleControl()
+        self.running = True
+        self.obstacle_relative_velocity = None
+        
+    def __str__(self):
+        return f"ego_control: {self.ego_control}, other_vehicle_control: {self.other_vehicle_control}, cc: {self.accInfo.is_active()}, running: {self.running}"
 
 class DualControl(object):
     def __init__(self, restart_callback):
@@ -122,17 +120,17 @@ class DualControl(object):
                 #     world.camera_manager.next_sensor()
                 elif event.button == 10:
                     # TODO: mettere toggle distanza
-                    control_info.change_distance_offset()
+                    control_info.acc_info.change_distance_offset()
                 elif event.button == 9: 
-                    control_info.toggle_pid()
-                    if not control_info.cc():
-                        control_info.ego_control.throttle = 0.0
-                        control_info.ego_control.brake = 0.0
+                    control_info.acc_info.toggle_acc()
+                    if not control_info.acc_info.is_active():
+                        control.throttle = 0.0
+                        control.brake = 0.0
                     
                 elif event.button == 22:
-                    control_info.increase_target_velocity()
+                    control_info.acc_info.increase_target_velocity()
                 elif event.button == 21:
-                    control_info.decrease_target_velocity()
+                    control_info.acc_info.decrease_target_velocity()
 
             elif event.type == pygame.KEYDOWN:
                 if self._is_quit_shortcut(event.key):
@@ -146,7 +144,7 @@ class DualControl(object):
                 elif event.key == K_c:
                     carla_utility.next_weather()
                 elif event.key == K_h:
-                    control_info.change_distance_offset()
+                    control_info.acc_info.change_distance_offset()
                 if event.key == K_q:
                     control.gear = 1 if control.reverse else -1
                 elif event.key == K_m:
@@ -158,14 +156,14 @@ class DualControl(object):
                 elif control.manual_gear_shift and event.key == K_PERIOD:
                     control.gear = control.gear + 1
                 elif event.key == K_p:
-                    control_info.toggle_pid()
-                    if not control_info.cc():
-                        control_info.ego_control.throttle = 0.0
-                        control_info.ego_control.brake = 0.0
+                    control_info.acc_info.toggle_acc()
+                    if not control_info.acc_info.is_active():
+                        control.throttle = 0.0
+                        control.brake = 0.0
                 elif event.key == pygame.K_PLUS:
-                    control_info.increase_target_velocity()
+                    control_info.acc_info.increase_target_velocity()
                 elif event.key == pygame.K_MINUS:
-                    control_info.decrease_target_velocity()            
+                    control_info.acc_info.decrease_target_velocity()            
 
         self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time(), control_info)
         #self._parse_vehicle_wheel(control) #TODO "To drive start by preshing the brake pedal :')"
@@ -183,7 +181,7 @@ class DualControl(object):
         if keys[K_s]:
             control.throttle = 0.0
             control.brake = 1.0
-            control_info.set_cc(False)
+            control_info.acc_info.set_active(False)
         if keys[K_UP]:
             control2.throttle = 1.0
             control2.brake = 0.0

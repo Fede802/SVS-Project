@@ -2,7 +2,7 @@ import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'utility'))
 import numpy as np
 from collections import deque
-import carla_utility, time
+import carla_utility, time, carla
 
 class PID:
     def __init__(self, buffer_size, kp=0.2, ki=0.0, kd=0.0):
@@ -37,8 +37,6 @@ class PIDController:
         distance_error = min_depth - min_permitted_distance
         
         if distance_error > 0:
-            control_info.ego_control.throttle = self.pid_velocity.compute_control(control_info.target_velocity, current_velocity)
-            control_info.ego_control.brake = 0
+            return carla.VehicleControl(throttle = self.pid_velocity.compute_control(control_info.target_velocity, current_velocity))
         else:
-            control_info.ego_control.brake = self.pid_distance.compute_control(min_permitted_distance, min_depth)
-            control_info.ego_control.throttle = 0
+            return carla.VehicleControl(brake = self.pid_distance.compute_control(min_permitted_distance, min_depth))

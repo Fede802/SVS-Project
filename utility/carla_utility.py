@@ -105,6 +105,48 @@ def setup_spectator(world: carla.World, spawn_point: carla.Transform):
 def compute_security_distance(velocity):
     return (velocity // 10) ** 2
 
+class VeichleWithRadar:
+    def __init__(self, vehicle, radar_range, radar_detection_h_radius, radar_detection_v_radius, veichle_controller, show_detection=False, show_range=False, show_filter=False):
+        self.vehicle = vehicle
+        self.radar_detection_h_radius = radar_detection_h_radius
+        self.radar_detection_v_radius = radar_detection_v_radius
+        self.vehicle_controller = veichle_controller
+        self.show_detection = show_detection
+        self.show_range = show_range
+        self.show_filter = show_filter
+        self.radar = spawn_radar(vehicle, range=radar_range)
+        self.radar.listen(self.__radar_callback)
+
+    def __radar_callback(self, data):
+        self.min_ttc = self.min_depth = self.relative_velocity = float('inf')
+        distances = []
+        velocities = []
+        ttc = []
+
+        for detection in data:
+            if debug_utility.evaluate_point(self.radar, detection, self.radar_detection_h_radius, self.radar_detection_v_radius):
+                self.show_detection and debug_utility.draw_radar_point(self.radar_sensor, detection)
+                distances.append(detection.depth)
+                velocities.append(detection.velocity)
+                ttc.append(detection.depth / abs(detection.velocity) if abs(detection.velocity) != 0 else float('inf'))
+        self.min_ttc = min(ttc) if len(ttc) > 0 else float('inf')
+        self.min_depth = distances[ttc.index(self.min_ttc)] if len(distances) > 0 else float('inf')
+        self.relative_velocity = velocities[ttc.index(self.min_ttc)] if len(velocities) > 0 else float('inf')
+
+    def compute_control(self):
+        if self.acc_info.is_active():
+            self.veichle_control = self.vehicle_controller.apply_control(self.acc_info, self.vehicle.get_velocity().length() * 3.6, self.min_depth)
+        else:
+            self.veichle_control = carla.VehicleControl()
+        return self.veichle_control
+    
+    def apply_control(self):
+        self.vehicle.apply_control(self.veichle_control)
+
+    def compute_and_apply_control(self):
+        self.compute_control()
+        self.apply_control() 
+
 class CameraManager(object):
     def __init__(self, parent_actor, transform_index = 0):
         self.sensor = None
@@ -152,10 +194,10 @@ class CameraManager(object):
         self.__print_text_to_screen(display, f"Brake: {control_info.ego_control.brake}", (10, 50), (255, 255, 255))
         self.__print_text_to_screen(display, f"Steer: {control_info.ego_control.steer}", (10, 90), (255, 255, 255))
         self.__print_text_to_screen(display, f"Hand Brake: {control_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
-        self.__print_text_to_screen(display, f"PID CC: {control_info.cc()}", (10, 170), (255, 255, 255))
-        self.__print_text_to_screen(display, f"Min Permitted Distance: {control_info.min_permitted_offset}", (10, 210), (255, 255, 255))
+        self.__print_text_to_screen(display, f"PID CC: {control_info.acc_info.is_active()}", (10, 170), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Min Permitted Distance: {control_info.acc_info.min_permitted_offset}", (10, 210), (255, 255, 255))
         self.__print_text_to_screen(display, f"Ego Velocity: {ego_vehicle.get_velocity().length() * 3.6}", (10, 250), (255, 255, 255))
-        self.__print_text_to_screen(display, f"Target Velocity: {control_info.target_velocity}", (10, 290), (255, 255, 255))
+        self.__print_text_to_screen(display, f"Target Velocity: {control_info.acc_info.target_velocity}", (10, 290), (255, 255, 255))
         other_vehicle_velocity = ego_vehicle.get_velocity().length() * 3.6 + control_info.obstacle_relative_velocity
         self.__print_text_to_screen(display, f"Obstacle Velocity: {other_vehicle_velocity}", (10, 330), (255, 255, 255))
 

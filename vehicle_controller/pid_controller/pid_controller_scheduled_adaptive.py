@@ -2,7 +2,7 @@ import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'utility'))
 import numpy as np
 from collections import deque
-import carla_utility, time
+import carla_utility, time, carla
 
 class PID:
     def __init__(self, learning_rate, dt, buffer_size, kp=0.2, ki=0.0, kd=0.0):
@@ -32,27 +32,22 @@ class PIDController:
         self.pid_distance = PID(learning_rate, tc, buffer_size, kp_distance, ki_distance, kd_distance)
         self.update_frequency = tc
         self.last_update = 0
+        self.last_throttle = 0
+        self.last_brake = 0
         
-    def __reset(self):
-        self.last_throttle = 0 
-        self.last_brake = 0 
-
     def apply_control(self, control_info, current_velocity, min_depth):
         if control_info.reset:
-            self.__reset()
+            self.last_update = 0
             control_info.reset = False
-
+            
         if(time.time() - self.last_update > self.update_frequency):
             min_permitted_distance = carla_utility.compute_security_distance(current_velocity) + control_info.min_permitted_offset
             distance_error = min_depth - min_permitted_distance
             if distance_error > 0:
-                self.last_throttle = self.pid_velocity.compute_control(control_info.target_velocity, current_velocity)
-                control_info.ego_control.throttle = self.last_throttle
+                control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(control_info.target_velocity, current_velocity))
             else:
-                self.last_brake = self.pid_distance.compute_control(min_permitted_distance, min_depth)
-                control_info.ego_control.brake = self.last_brake
-
+                control = carla.VehicleControl(brake = self.pid_distance.compute_control(min_permitted_distance, min_depth))
             self.last_update = time.time()
+            return control
         else:
-            control_info.ego_control.throttle = self.last_throttle
-            control_info.ego_control.brake = self.last_brake    
+            return carla.VehicleControl(throttle = self.last_throttle, brake = self.last_brake)

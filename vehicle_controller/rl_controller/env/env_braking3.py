@@ -92,6 +92,7 @@ class GymEnv(gym.Env):
             return -abs_relative_distance/10
             
     def _check_done(self, observation):
+        #TODO use Collision sensor
         self.step_count += 1
         relative_distance = observation[0] - observation[1] #positive if obstacle is closer than security distance
         return self.step_count > 1024 or relative_distance > self.min_distance_offset / 2
