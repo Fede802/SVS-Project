@@ -16,6 +16,7 @@ weather_presets = __find_weather_presets()
 weather_index = 0
 
 def next_weather(reverse=False):
+    global weather_index
     weather_index += -1 if reverse else 1
     weather_index %= len(weather_presets)
     preset = weather_presets[weather_index]

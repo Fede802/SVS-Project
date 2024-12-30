@@ -63,7 +63,7 @@ class ControlInfo:
         self.other_vehicle_control = carla.VehicleControl()
 
     def change_distance_offset(self):
-        self.min_permitted_offset = (self.min_permitted_offset + 7) % 21
+        self.min_permitted_offset = (self.min_permitted_offset) % 21 + 7
         
     def increase_target_velocity(self):
         self.target_velocity += 1 if self.target_velocity < 130 else 0
@@ -145,6 +145,8 @@ class DualControl(object):
                     carla_utility.next_weather(reverse=True)
                 elif event.key == K_c:
                     carla_utility.next_weather()
+                elif event.key == K_h:
+                    control_info.change_distance_offset()
                 if event.key == K_q:
                     control.gear = 1 if control.reverse else -1
                 elif event.key == K_m:
