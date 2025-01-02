@@ -1,8 +1,9 @@
-import carla, time, debug_utility, math_utility, re, pygame, numpy as np
+import carla, time, debug_utility, math_utility, re, pygame, numpy as np, weakref, collections, math
 from carla import ColorConverter as cc
 
 client = carla.Client('localhost', 2000)
 client.set_timeout(100.0)
+client.load_world('Town13')
 world = client.get_world()
 spectator = world.get_spectator()
 
@@ -175,6 +176,11 @@ class VehicleWithRadar:
     
     def get_transform(self):
         return self.vehicle.get_transform()
+    
+def print_text_to_screen(display, text, position, color):
+        font = pygame.font.Font(None, 36)  # You can choose the font and size
+        text_surface = font.render(text, True, color)  # White color
+        display.blit(text_surface, position)
 
 class CameraManager(object):
     def __init__(self, parent_actor, transform_index = 0):
@@ -209,26 +215,22 @@ class CameraManager(object):
         self.transform_index = (self.transform_index + 1) % len(self._camera_transforms)
         self.sensor.destroy()
         self.__spawn_camera()
-    
-    def __print_text_to_screen(self, display, text, position, color):
-        font = pygame.font.Font(None, 36)  # You can choose the font and size
-        text_surface = font.render(text, True, color)  # White color
-        display.blit(text_surface, position)
+
 
     def render(self, display, control_info, ego_vehicle: carla.Vehicle):
         if self.surface is not None:
             scaled_surface = pygame.transform.scale(self.surface, display.get_size())
             display.blit(scaled_surface, (0, 0))
-        self.__print_text_to_screen(display, f"Throttle: {control_info.ego_control.throttle}", (10, 10), (255, 255, 255))
-        self.__print_text_to_screen(display, f"Brake: {control_info.ego_control.brake}", (10, 50), (255, 255, 255))
-        self.__print_text_to_screen(display, f"Steer: {control_info.ego_control.steer}", (10, 90), (255, 255, 255))
-        self.__print_text_to_screen(display, f"Hand Brake: {control_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
-        self.__print_text_to_screen(display, f"PID CC: {control_info.acc_info.is_active()}", (10, 170), (255, 255, 255))
-        self.__print_text_to_screen(display, f"Min Permitted Distance: {control_info.acc_info.min_permitted_offset}", (10, 210), (255, 255, 255))
-        self.__print_text_to_screen(display, f"Ego Velocity: {ego_vehicle.get_velocity().length() * 3.6}", (10, 250), (255, 255, 255))
-        self.__print_text_to_screen(display, f"Target Velocity: {control_info.acc_info.target_velocity}", (10, 290), (255, 255, 255))
+        print_text_to_screen(display, f"Throttle: {control_info.ego_control.throttle}", (10, 10), (255, 255, 255))
+        print_text_to_screen(display, f"Brake: {control_info.ego_control.brake}", (10, 50), (255, 255, 255))
+        print_text_to_screen(display, f"Steer: {control_info.ego_control.steer}", (10, 90), (255, 255, 255))
+        print_text_to_screen(display, f"Hand Brake: {control_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
+        print_text_to_screen(display, f"PID CC: {control_info.acc_info.is_active()}", (10, 170), (255, 255, 255))
+        print_text_to_screen(display, f"Min Permitted Distance: {control_info.acc_info.min_permitted_offset}", (10, 210), (255, 255, 255))
+        print_text_to_screen(display, f"Ego Velocity: {ego_vehicle.get_velocity().length() * 3.6}", (10, 250), (255, 255, 255))
+        print_text_to_screen(display, f"Target Velocity: {control_info.acc_info.target_velocity}", (10, 290), (255, 255, 255))
         other_vehicle_velocity = ego_vehicle.get_velocity().length() * 3.6 + control_info.obstacle_relative_velocity
-        self.__print_text_to_screen(display, f"Obstacle Velocity: {other_vehicle_velocity}", (10, 330), (255, 255, 255))
+        print_text_to_screen(display, f"Obstacle Velocity: {other_vehicle_velocity}", (10, 330), (255, 255, 255))
 
     def _parse_image(self, image):
         image.convert(self.sensors[1])
@@ -237,3 +239,36 @@ class CameraManager(object):
         array = array[:, :, :3]
         array = array[:, :, ::-1]
         self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+
+class CollisionSensor(object):
+    def __init__(self, parent_actor, display):
+        self.sensor = None
+        self.history = []
+        self._parent = parent_actor
+        self.display = display
+        world = self._parent.get_world()
+        bp = world.get_blueprint_library().find('sensor.other.collision')
+        self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)
+        # We need to pass the lambda a weak reference to self to avoid circular
+        # reference.
+        weak_self = weakref.ref(self)
+        self.sensor.listen(lambda event: CollisionSensor._on_collision(weak_self, event, self.display))
+
+    def get_collision_history(self):
+        history = collections.defaultdict(int)
+        for frame, intensity in self.history:
+            history[frame] += intensity
+        return history
+
+    @staticmethod
+    def _on_collision(weak_self, event, display):
+        self = weak_self()
+        if not self:
+            return
+        # Display the collision on the screen
+        print_text_to_screen(display, f"Collision at {event.frame}", (10, 370), (255, 255, 255))
+        impulse = event.normal_impulse
+        intensity = math.sqrt(impulse.x**2 + impulse.y**2 + impulse.z**2)
+        self.history.append((event.frame, intensity))
+        if len(self.history) > 4000:
+            self.history.pop(0)
