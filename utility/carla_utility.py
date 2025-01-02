@@ -3,7 +3,6 @@ from carla import ColorConverter as cc
 
 client = carla.Client('localhost', 2000)
 client.set_timeout(100.0)
-client.load_world('Town13')
 world = client.get_world()
 spectator = world.get_spectator()
 

@@ -34,10 +34,10 @@ def restart():
     ego_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=spawn_point), radar_range, radar_detection_h_radius, radar_detection_v_radius, ego_controller)
     ego_vehicle.acc_info = acc_info
     camera_manager = CameraManager(ego_vehicle.vehicle)
-    collision_sensor = CollisionSensor(ego_vehicle.vehicle, display)
+    #collision_sensor = CollisionSensor(ego_vehicle.vehicle, display)
     carla_utility.move_spectator_to(ego_vehicle.vehicle.get_transform())
     other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
-    carla_utility.spawn_traffic(10, spawn_point)
+    #carla_utility.spawn_traffic(10, spawn_point)
 
 send_info and server.start_servers()
 pygame.init()
