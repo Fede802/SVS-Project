@@ -23,10 +23,30 @@ def next_weather(reverse=False):
     world.set_weather(preset[0])
 
 def __spawn_actor(blueprint, spawn_point: carla.Transform, attach_to: carla.Actor = None):
-    __setup_spectator(carla.Transform(math_utility.add(spawn_point.location, attach_to.get_location() if attach_to != None else carla.Location())))
     actor = world.spawn_actor(blueprint, spawn_point, attach_to)
-    time.sleep(3)
+    time.sleep(2)
     return actor
+
+def spawn_traffic(num_vehicles: int, ego_spawn_point: carla.Transform):
+    blueprints = world.get_blueprint_library().filter('vehicle.*')
+    map = world.get_map()
+    ego_waypoint = map.get_waypoint(ego_spawn_point.location)
+    
+    for i in range(1, num_vehicles + 1):
+        # Find the next waypoint on the same lane
+        waypoints = ego_waypoint.next(i * 30)  # Adjust the distance as needed
+        print("Spawn point: " + str(ego_spawn_point.location) + " Waypoint: " + str(waypoints[0].transform.location))
+        if waypoints:
+            spawn_point = waypoints[0].transform
+            # increase the z value to avoid spawn bug
+            spawn_point.location.z += 30
+            blueprint = np.random.choice(blueprints)
+            actor = __spawn_actor(blueprint, spawn_point)
+            actor.set_autopilot(True)  # Enable autopilot for vehicles
+            print(f'Spawning vehicle {i} at {spawn_point.location}')
+        else:
+            print(f'No waypoint found for vehicle {i+1} at distance {i * 10}')
+
 
 def __transform_vector(point: carla.Transform, transform: carla.Transform):
     point.location.x += transform.location.x

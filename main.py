@@ -36,6 +36,7 @@ def restart():
     camera_manager = CameraManager(ego_vehicle.vehicle)
     carla_utility.move_spectator_to(ego_vehicle.vehicle.get_transform())
     other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
+    carla_utility.spawn_traffic(10, spawn_point)
 
 send_info and server.start_servers()
 pygame.init()
