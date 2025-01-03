@@ -31,7 +31,18 @@ radar_range_offset = 20
 max_target_velocity = 130
 radar_range = compute_security_distance(max_target_velocity) + radar_range_offset
 
+def move_spectator_to(to, distance=10.0, transform = carla.Transform(carla.Location(z=5), carla.Rotation(pitch=-10))):
+    spectator_transform = carla.Transform(carla.Location(to.location - to.get_forward_vector() * distance), to.rotation)
+    spectator.set_transform(__transform_vector(spectator_transform, transform))
+    
+def setup_spectator(spawn_point: carla.Transform):
+    #try go back to 1000
+    if math_utility.sub(spectator.get_location(), spawn_point.location).length() > 2000:
+        move_spectator_to(spawn_point)
+        time.sleep(10)
+
 def __spawn_actor(blueprint, spawn_point: carla.Transform, attach_to: carla.Actor = None):
+    setup_spectator(carla.Transform(math_utility.add(spawn_point.location, attach_to.get_location() if attach_to != None else carla.Location())))
     actor = world.spawn_actor(blueprint, spawn_point, attach_to)
     if isinstance(actor, carla.Vehicle):
         actor.apply_control(carla.VehicleControl(brake=0.5))
@@ -102,10 +113,6 @@ def __transform_vector(point: carla.Transform, transform: carla.Transform):
     point.rotation.roll += transform.rotation.roll
     point.rotation.yaw += transform.rotation.yaw
     return point
-
-def move_spectator_to(to, distance=10.0, transform = carla.Transform(carla.Location(z=5), carla.Rotation(pitch=-10))):
-    spectator_transform = carla.Transform(carla.Location(to.location - to.get_forward_vector() * distance), to.rotation)
-    spectator.set_transform(__transform_vector(spectator_transform, transform))
     
 def spawn_vehicle_bp_at(vehicle, spawn_point=carla.Transform(), transform = carla.Transform()):
     blueprint_library = world.get_blueprint_library()
@@ -122,12 +129,10 @@ def spawn_vehicle_in_front_of(vehicle: carla.Actor, vehicle_index=0, offset=0):
     #+10 on z is to avoid spawn bug
     return spawn_vehicle_at(vehicle_index,spawn_point=carla.Transform(carla.Location(v3d.x, v3d.y, v3d.z + 10), vehicle.get_transform().rotation))
 
-
 def spawn_vehicle_bp_in_front_of(vehicle, vehicle_bp_name, offset=0):
     v3d = debug_utility.get_point_at(vehicle, vehicle.get_location(), offset)
     #+10 on z is to avoid spawn bug @TODO
     return spawn_vehicle_bp_at(vehicle_bp_name,spawn_point=carla.Transform(carla.Location(v3d.x, v3d.y, v3d.z + 2), vehicle.get_transform().rotation))
-
 
 def spawn_vehicle(vehicle_index=0, spawn_index=0, pattern='vehicle.*', transform = carla.Transform()):
     blueprint_library = world.get_blueprint_library()
@@ -157,16 +162,6 @@ def destroy_all_vehicle_and_sensors():
         v.stop()
         v.destroy()
     time.sleep(2)    
-
-def __setup_spectator(spawn_point: carla.Transform):
-    #try go back to 1000
-    if math_utility.sub(spectator.get_location(), spawn_point.location).length() > 2000:
-        spectator.set_transform(spawn_point)
-        time.sleep(10)
-
-def setup_spectator(world: carla.World, spawn_point: carla.Transform):
-    spectator = world.get_spectator()
-    __setup_spectator(spectator, spawn_point)        
 
 class VehicleWithRadar:
     def __init__(self, vehicle, acc_info, veichle_controller = rl_controller.RLController(), show_detection=False, show_range=False, show_filter=False):

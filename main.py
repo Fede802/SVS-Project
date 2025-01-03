@@ -33,7 +33,6 @@ def restart(spawn_traffic = False):
     ego_vehicle.acc_info = ego_acc_info
     camera_manager = CameraManager(ego_vehicle.vehicle)
     #collision_sensor = CollisionSensor(ego_vehicle.vehicle, display)
-    carla_utility.move_spectator_to(ego_vehicle.vehicle.get_transform())
     if spawn_traffic:
         cb = carla_utility.spawn_traffic(5)
     else:
@@ -41,7 +40,7 @@ def restart(spawn_traffic = False):
         other_vehicle_spawn_point.location.z += 2
         other_vehicle_acc_info = ACCInfo(True, min_permitted_offset=min_distance_offset, target_velocity=40)
         other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=other_vehicle_spawn_point), other_vehicle_acc_info)
-        
+    carla_utility.move_spectator_to(ego_vehicle.vehicle.get_transform())
 send_info and server.start_servers()
 pygame.init()
 pygame.font.init()
@@ -58,9 +57,6 @@ lastUpdate = 0
 ego_controller = rl_controller.RLController()
 
 restart()
-
-# carla_utility.move_spectator_to(carla.Transform(carla.Location(x=2385, y=6119, z=169.070175), carla.Rotation(pitch=5.283404, yaw=-85.546600, roll=0.026908)))
-# carla_utility.move_spectator_to(carla.Transform(carla.Location(x=2390, y=6120, z=169.070175), carla.Rotation(pitch=5.283404, yaw=-85.546600, roll=0.026908)))
  
 try:
     while control_info.running:
@@ -83,6 +79,7 @@ try:
         ego_vehicle.apply_control()
         other_vehicle != None and other_vehicle.apply_control()
         camera_manager.render(display, control_info, ego_vehicle.vehicle)
+        carla_utility.setup_spectator(ego_vehicle.vehicle.get_transform())
         pygame.display.flip()
 except KeyboardInterrupt:
     pass

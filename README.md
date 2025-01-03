@@ -35,14 +35,14 @@ reward piccoli
 
 ## TODO
 - [ ] Multi-radar
-- [ ] Traffico superstrada
+- [ ] Traffico superstrada (ora c'è traffico con autopilot in 2 versioni)
 - [ ] Traffico di carla (test)
 - [ ] Improvement al "HUD"
 - [ ] Testare i pedali e resize in lab
 - [x] Sterzo a other vehicle
-- [ ] Aggiustare spawn scenario base
-- [ ] Movimento dinamico dello spettare di carla (avvicinamento al veicolo)
-- [ ] Aggiustare camera di carla (più dritto)
+- [x] Aggiustare spawn scenario base
+- [x] Movimento dinamico dello spettare di carla (avvicinamento al veicolo)
+- [x] Aggiustare camera di carla (più dritto)
 - [ ] Opt: Collision Sensor con scritte dinamiche
 - [ ] Opt: braking model con 1/ttc invece della distanza
 
