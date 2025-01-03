@@ -1,6 +1,6 @@
 import carla, time, debug_utility, math_utility, re, pygame, numpy as np, weakref, collections, math
 from carla import ColorConverter as cc
-
+from vehicle_controller.rl_controller import rl_controller
 client = carla.Client('localhost', 2000)
 client.set_timeout(100.0)
 world = client.get_world()
@@ -22,31 +22,45 @@ def next_weather(reverse=False):
     preset = weather_presets[weather_index]
     world.set_weather(preset[0])
 
+def compute_security_distance(velocity):
+    return (velocity // 10) ** 2
+
+radar_detection_h_radius = 1
+radar_detection_v_radius = 1
+radar_range_offset = 20
+max_target_velocity = 130
+radar_range = compute_security_distance(max_target_velocity) + radar_range_offset
+
 def __spawn_actor(blueprint, spawn_point: carla.Transform, attach_to: carla.Actor = None):
     actor = world.spawn_actor(blueprint, spawn_point, attach_to)
     time.sleep(2)
     return actor
 
-def spawn_traffic(num_vehicles: int, ego_spawn_point: carla.Transform):
-    blueprints = world.get_blueprint_library().filter('vehicle.*')
-    map = world.get_map()
-    ego_waypoint = map.get_waypoint(ego_spawn_point.location)
-    
-    for i in range(1, num_vehicles + 1):
-        # Find the next waypoint on the same lane
-        waypoints = ego_waypoint.next(i * 30)  # Adjust the distance as needed
-        print("Spawn point: " + str(ego_spawn_point.location) + " Waypoint: " + str(waypoints[0].transform.location))
-        if waypoints:
-            spawn_point = waypoints[0].transform
-            # increase the z value to avoid spawn bug
-            spawn_point.location.z += 30
-            blueprint = np.random.choice(blueprints)
-            actor = __spawn_actor(blueprint, spawn_point)
-            actor.set_autopilot(True)  # Enable autopilot for vehicles
-            print(f'Spawning vehicle {i} at {spawn_point.location}')
-        else:
-            print(f'No waypoint found for vehicle {i+1} at distance {i * 10}')
+def spawn(spawn_point: carla.Transform, spawn_distance=30):
+    blueprint_library = world.get_blueprint_library().filter('vehicle.*')[0]
+    # vehicle_bp = np.random.choice(blueprint_library)
+    spawn_point = world.get_map().get_waypoint(spawn_point.location, True).next(spawn_distance)[0].transform
+    spawn_point.location.z += 2
+    actor = __spawn_actor(blueprint_library, spawn_point)
+    actor.apply_control(carla.VehicleControl(brake=0.5))
+    return actor
 
+def handle_traffic(vehicles, spawn_points: list):
+    for v in vehicles:
+        if spawn_points[v[1]].location.distance(v[0].get_location()) > 100:
+            spawn_point = world.get_map().get_waypoint(spawn_points[v[1]].location, True).next(30)[0].transform
+            spawn_point.location.z += 2
+            v[0].set_transform(spawn_point)
+
+def spawn_traffic(num_vehicles: int, spawn_points: list):
+    spawn_distance = 30
+    vehicles = []
+    for i in range(num_vehicles):
+        for j, sp in enumerate(spawn_points):
+            vehicles.append([spawn(sp, spawn_distance * (i + 1)), j])
+    for v in vehicles:
+        v[0].set_autopilot(True)
+    return lambda: handle_traffic(vehicles, spawn_points)
 
 def __transform_vector(point: carla.Transform, transform: carla.Transform):
     point.location.x += transform.location.x
@@ -122,11 +136,8 @@ def setup_spectator(world: carla.World, spawn_point: carla.Transform):
     spectator = world.get_spectator()
     __setup_spectator(spectator, spawn_point)        
 
-def compute_security_distance(velocity):
-    return (velocity // 10) ** 2
-
 class VehicleWithRadar:
-    def __init__(self, vehicle, radar_range, radar_detection_h_radius, radar_detection_v_radius, veichle_controller, show_detection=False, show_range=False, show_filter=False):
+    def __init__(self, vehicle, veichle_controller = rl_controller.RLController(), show_detection=False, show_range=False, show_filter=False):
         self.vehicle = vehicle
         self.radar_detection_h_radius = radar_detection_h_radius
         self.radar_detection_v_radius = radar_detection_v_radius

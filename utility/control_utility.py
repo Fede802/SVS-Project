@@ -208,7 +208,7 @@ class DualControl(object):
         else:
             self._other_steer_cache = 0.0    
         self._other_steer_cache = min(0.7, max(-0.7, self._other_steer_cache))
-        control.steer = round(self._other_steer_cache, 1)
+        control2.steer = round(self._other_steer_cache, 1)
         
 
     def _parse_vehicle_wheel(self, control):
