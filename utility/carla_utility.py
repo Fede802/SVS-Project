@@ -38,14 +38,9 @@ def __spawn_actor(blueprint, spawn_point: carla.Transform, attach_to: carla.Acto
     time.sleep(2)
     return actor
 
-def get_waypoint_from_transform(transform: carla.Transform):
-    wp = world.get_map().get_waypoint(transform.location, True)
-    wp.transform.location.z += 2
-    return wp
-
-old_spawn_wp = get_waypoint_from_transform(carla.Transform(carla.Location(x=2388, y=6164, z=187), carla.Rotation(yaw = -88.2)))
-mid_lane_wp = get_waypoint_from_transform(carla.Transform(carla.Location(x=2390, y=6110, z=187), carla.Rotation(yaw = -85.54)))
-left_lane_wp = get_waypoint_from_transform(carla.Transform(carla.Location(x=2385, y=6110, z=187), carla.Rotation(yaw = -85.54)))
+old_spawn_point = carla.Transform(carla.Location(x=2388, y=6164, z=187), carla.Rotation(yaw = -88.2))
+mid_lane_wp = world.get_map().get_waypoint(carla.Location(x=2390, y=6110, z=187), True)
+left_lane_wp = world.get_map().get_waypoint(carla.Location(x=2385, y=6110, z=187), True)
 
 def spawn(way_point: carla.Waypoint, spawn_distance):
     blueprint_library = world.get_blueprint_library().filter('vehicle.*')[0]
@@ -108,7 +103,7 @@ def __transform_vector(point: carla.Transform, transform: carla.Transform):
     point.rotation.yaw += transform.rotation.yaw
     return point
 
-def move_spectator_to(to, distance=5.0, transform = carla.Transform(carla.Location(x = 5, z=5), carla.Rotation(pitch=-10))):
+def move_spectator_to(to, distance=10.0, transform = carla.Transform(carla.Location(z=5), carla.Rotation(pitch=-10))):
     spectator_transform = carla.Transform(carla.Location(to.location - to.get_forward_vector() * distance), to.rotation)
     spectator.set_transform(__transform_vector(spectator_transform, transform))
     
@@ -174,8 +169,9 @@ def setup_spectator(world: carla.World, spawn_point: carla.Transform):
     __setup_spectator(spectator, spawn_point)        
 
 class VehicleWithRadar:
-    def __init__(self, vehicle, veichle_controller = rl_controller.RLController(), show_detection=False, show_range=False, show_filter=False):
+    def __init__(self, vehicle, acc_info, veichle_controller = rl_controller.RLController(), show_detection=False, show_range=False, show_filter=False):
         self.vehicle = vehicle
+        self.acc_info = acc_info
         self.radar_detection_h_radius = radar_detection_h_radius
         self.radar_detection_v_radius = radar_detection_v_radius
         self.vehicle_controller = veichle_controller
@@ -184,6 +180,7 @@ class VehicleWithRadar:
         self.show_filter = show_filter
         self.radar = spawn_radar(vehicle, range=radar_range)
         self.radar.listen(self.__radar_callback)
+        time.sleep(1)
 
     def __radar_callback(self, data):
         self.min_ttc = self.min_depth = self.relative_velocity = float('inf')
