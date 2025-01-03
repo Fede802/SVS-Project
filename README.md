@@ -38,6 +38,7 @@ reward piccoli
 - [ ] Traffico superstrada (ora c'è traffico con autopilot in 2 versioni)
 - [ ] Traffico di carla (test)
 - [ ] Improvement al "HUD"
+- [ ] Improvement controlli
 - [ ] Testare i pedali e resize in lab
 - [x] Sterzo a other vehicle
 - [x] Aggiustare spawn scenario base

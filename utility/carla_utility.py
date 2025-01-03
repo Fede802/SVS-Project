@@ -6,6 +6,13 @@ client.set_timeout(100.0)
 world = client.get_world()
 spectator = world.get_spectator()
 
+def load_world(world_name):
+    global world, spectator
+    if world.get_map().name.split("/")[-1] != world_name:
+        print('Loading world', world_name)
+        world = client.load_world(world_name)
+        spectator = world.get_spectator()
+
 def __find_weather_presets():
     rgx = re.compile('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)')
     name = lambda x: ' '.join(m.group(0) for m in rgx.finditer(x))
@@ -34,14 +41,16 @@ radar_range = compute_security_distance(max_target_velocity) + radar_range_offse
 def move_spectator_to(to, distance=10.0, transform = carla.Transform(carla.Location(z=5), carla.Rotation(pitch=-10))):
     spectator_transform = carla.Transform(carla.Location(to.location - to.get_forward_vector() * distance), to.rotation)
     spectator.set_transform(__transform_vector(spectator_transform, transform))
-    
+
 def setup_spectator(spawn_point: carla.Transform):
     #try go back to 1000
     if math_utility.sub(spectator.get_location(), spawn_point.location).length() > 2000:
+        print('Moving spectator to', spawn_point.location)
         move_spectator_to(spawn_point)
         time.sleep(10)
 
 def __spawn_actor(blueprint, spawn_point: carla.Transform, attach_to: carla.Actor = None):
+    
     setup_spectator(carla.Transform(math_utility.add(spawn_point.location, attach_to.get_location() if attach_to != None else carla.Location())))
     actor = world.spawn_actor(blueprint, spawn_point, attach_to)
     if isinstance(actor, carla.Vehicle):
@@ -134,6 +143,12 @@ def spawn_vehicle_bp_in_front_of(vehicle, vehicle_bp_name, offset=0):
     #+10 on z is to avoid spawn bug @TODO
     return spawn_vehicle_bp_at(vehicle_bp_name,spawn_point=carla.Transform(carla.Location(v3d.x, v3d.y, v3d.z + 2), vehicle.get_transform().rotation))
 
+def spawn_vehicle_bp(vehicle, spawn_index=0, transform = carla.Transform()):
+    blueprint_library = world.get_blueprint_library()
+    vehicle_bp = blueprint_library.find(vehicle) 
+    spawn_point = world.get_map().get_spawn_points()[spawn_index]
+    return __spawn_actor(vehicle_bp, __transform_vector(spawn_point, transform))
+
 def spawn_vehicle(vehicle_index=0, spawn_index=0, pattern='vehicle.*', transform = carla.Transform()):
     blueprint_library = world.get_blueprint_library()
     vehicle_bp = blueprint_library.filter(pattern)[vehicle_index]
@@ -173,12 +188,13 @@ class VehicleWithRadar:
         self.show_detection = show_detection
         self.show_range = show_range
         self.show_filter = show_filter
+        self.vehicle_control = carla.VehicleControl()
+        self.min_ttc = self.min_depth = self.relative_velocity = float('inf')
         self.radar = spawn_radar(vehicle, range=radar_range)
         self.radar.listen(self.__radar_callback)
         time.sleep(1)
 
     def __radar_callback(self, data):
-        self.min_ttc = self.min_depth = self.relative_velocity = float('inf')
         distances = []
         velocities = []
         ttc = []
@@ -255,7 +271,6 @@ class CameraManager(object):
         self.sensor.destroy()
         self.__spawn_camera()
 
-
     def render(self, display, control_info, ego_vehicle: carla.Vehicle):
         if self.surface is not None:
             scaled_surface = pygame.transform.scale(self.surface, display.get_size())
@@ -288,10 +303,7 @@ class CollisionSensor(object):
         world = self._parent.get_world()
         bp = world.get_blueprint_library().find('sensor.other.collision')
         self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)
-        # We need to pass the lambda a weak reference to self to avoid circular
-        # reference.
-        weak_self = weakref.ref(self)
-        self.sensor.listen(lambda event: CollisionSensor._on_collision(weak_self, event, self.display))
+        self.sensor.listen(lambda event: self._on_collision(event, self.display))
 
     def get_collision_history(self):
         history = collections.defaultdict(int)
@@ -299,11 +311,7 @@ class CollisionSensor(object):
             history[frame] += intensity
         return history
 
-    @staticmethod
-    def _on_collision(weak_self, event, display):
-        self = weak_self()
-        if not self:
-            return
+    def _on_collision(self, event, display):
         # Display the collision on the screen
         print_text_to_screen(display, f"Collision at {event.frame}", (10, 370), (255, 255, 255))
         impulse = event.normal_impulse

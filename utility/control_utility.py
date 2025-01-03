@@ -74,7 +74,7 @@ class ControlInfo:
         self.ego_control = carla.VehicleControl()
         self.other_vehicle_control = carla.VehicleControl()
         self.running = True
-        self.obstacle_relative_velocity = None
+        self.obstacle_relative_velocity = 0.0 #TODO dovrebbe essere none all'inizio
         
     def __str__(self):
         return f"ego_control: {self.ego_control}, other_vehicle_control: {self.other_vehicle_control}, cc: {self.accInfo.is_active()}, running: {self.running}"
@@ -136,8 +136,12 @@ class DualControl(object):
             elif event.type == pygame.KEYDOWN:
                 if self._is_quit_shortcut(event.key):
                     return True
-                elif event.key == K_BACKSPACE:
-                    self._restart_callback()
+                elif event.key == pygame.K_1:
+                    self._restart_callback(1)
+                elif event.key == pygame.K_2:
+                    self._restart_callback(2)
+                elif event.key == pygame.K_3:
+                    self._restart_callback(3)
                 elif event.key == K_TAB:
                     camera_manager.toggle_camera()
                 elif event.key == K_c and pygame.key.get_mods() & KMOD_SHIFT:

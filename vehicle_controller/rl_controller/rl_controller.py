@@ -3,7 +3,6 @@ import os, carla_utility, carla
 
 class RLController:
     def __init__(self):
-        print(os.path.dirname(__file__))
         self.rl_velocity = PPO.load(os.path.join(os.path.dirname(__file__), 'model', 'working_cc_model.zip'))
         self.rl_distance = PPO.load(os.path.join(os.path.dirname(__file__), 'model', 'working_braking_model.zip'))
 
