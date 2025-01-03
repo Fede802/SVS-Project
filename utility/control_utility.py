@@ -82,7 +82,8 @@ class ControlInfo:
 class DualControl(object):
     def __init__(self, restart_callback):
         self._restart_callback = restart_callback
-        self._steer_cache = 0.0
+        self._ego_steer_cache = 0.0
+        self._other_steer_cache = 0.0
        
         # initialize steering wheel
         pygame.joystick.init()
@@ -182,22 +183,32 @@ class DualControl(object):
             control.throttle = 0.0
             control.brake = 1.0
             control_info.acc_info.set_active(False)
+        control.hand_brake = keys[K_SPACE]
+        steer_increment = 5e-4 * milliseconds
+        if keys[K_a]:
+            self._ego_steer_cache -= steer_increment
+        elif keys[K_d]:
+            self._ego_steer_cache += steer_increment
+        else:
+            self._ego_steer_cache = 0.0
+        self._ego_steer_cache = min(0.7, max(-0.7, self._ego_steer_cache))
+        control.steer = round(self._ego_steer_cache, 1)    
+
         if keys[K_UP]:
             control2.throttle = 1.0
             control2.brake = 0.0
         if keys[K_DOWN]:
             control2.throttle = 0.0
             control2.brake = 1.0    
-        control.hand_brake = keys[K_SPACE]
-        steer_increment = 5e-4 * milliseconds
-        if keys[K_LEFT] or keys[K_a]:
-            self._steer_cache -= steer_increment
-        elif keys[K_RIGHT] or keys[K_d]:
-            self._steer_cache += steer_increment
+        
+        if keys[K_LEFT]:
+            self._other_steer_cache -= steer_increment
+        elif keys[K_RIGHT]:
+            self._other_steer_cache += steer_increment
         else:
-            self._steer_cache = 0.0
-        self._steer_cache = min(0.7, max(-0.7, self._steer_cache))
-        control.steer = round(self._steer_cache, 1)
+            self._other_steer_cache = 0.0    
+        self._other_steer_cache = min(0.7, max(-0.7, self._other_steer_cache))
+        control.steer = round(self._other_steer_cache, 1)
         
 
     def _parse_vehicle_wheel(self, control):
