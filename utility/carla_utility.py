@@ -33,34 +33,71 @@ radar_range = compute_security_distance(max_target_velocity) + radar_range_offse
 
 def __spawn_actor(blueprint, spawn_point: carla.Transform, attach_to: carla.Actor = None):
     actor = world.spawn_actor(blueprint, spawn_point, attach_to)
+    if isinstance(actor, carla.Vehicle):
+        actor.apply_control(carla.VehicleControl(brake=0.5))
     time.sleep(2)
     return actor
 
-def spawn(spawn_point: carla.Transform, spawn_distance=30):
+def get_waypoint_from_transform(transform: carla.Transform):
+    wp = world.get_map().get_waypoint(transform.location, True)
+    wp.transform.location.z += 2
+    return wp
+
+old_spawn_wp = get_waypoint_from_transform(carla.Transform(carla.Location(x=2388, y=6164, z=187), carla.Rotation(yaw = -88.2)))
+mid_lane_wp = get_waypoint_from_transform(carla.Transform(carla.Location(x=2390, y=6110, z=187), carla.Rotation(yaw = -85.54)))
+left_lane_wp = get_waypoint_from_transform(carla.Transform(carla.Location(x=2385, y=6110, z=187), carla.Rotation(yaw = -85.54)))
+
+def spawn(way_point: carla.Waypoint, spawn_distance):
     blueprint_library = world.get_blueprint_library().filter('vehicle.*')[0]
     # vehicle_bp = np.random.choice(blueprint_library)
-    spawn_point = world.get_map().get_waypoint(spawn_point.location, True).next(spawn_distance)[0].transform
+    spawn_point = way_point.next(spawn_distance)[0].transform
     spawn_point.location.z += 2
-    actor = __spawn_actor(blueprint_library, spawn_point)
-    actor.apply_control(carla.VehicleControl(brake=0.5))
-    return actor
+    return __spawn_actor(blueprint_library, spawn_point)
 
-def handle_traffic(vehicles, spawn_points: list):
+def get_wp_from_lane_id(lane_id):
+    if lane_id == mid_lane_wp.lane_id:
+        return mid_lane_wp
+    elif lane_id == mid_lane_wp.get_left_lane().lane_id:
+        return mid_lane_wp.get_left_lane()
+    else:
+        return mid_lane_wp.get_right_lane()
+
+def handle_traffic_same_spawn(vehicles):
     for v in vehicles:
-        if spawn_points[v[1]].location.distance(v[0].get_location()) > 100:
-            spawn_point = world.get_map().get_waypoint(spawn_points[v[1]].location, True).next(30)[0].transform
+        current_wp = world.get_map().get_waypoint(v[0].get_location(), True)
+        current_wp_spawn = get_wp_from_lane_id(current_wp.lane_id)
+        if current_wp_spawn.transform.location.distance(v[0].get_location()) > 100:
+            spawn_point = get_wp_from_lane_id(v[1]).next(30)[0].transform
             spawn_point.location.z += 2
             v[0].set_transform(spawn_point)
 
-def spawn_traffic(num_vehicles: int, spawn_points: list):
+def spawn_traffic_same_spawn(vehicle_per_lane: int):
     spawn_distance = 30
     vehicles = []
-    for i in range(num_vehicles):
-        for j, sp in enumerate(spawn_points):
-            vehicles.append([spawn(sp, spawn_distance * (i + 1)), j])
+    for i in range(vehicle_per_lane):
+            vehicles.append([spawn(mid_lane_wp, spawn_distance * (i + 1)), mid_lane_wp.lane_id])
+            vehicles.append([spawn(mid_lane_wp.get_right_lane(), spawn_distance * (i + 1)), mid_lane_wp.get_right_lane().lane_id])
     for v in vehicles:
         v[0].set_autopilot(True)
-    return lambda: handle_traffic(vehicles, spawn_points)
+    return lambda: handle_traffic_same_spawn(vehicles)
+
+def handle_traffic(vehicles):
+    for v in vehicles:
+        current_wp = world.get_map().get_waypoint(v.get_location(), True)
+        current_wp_spawn = get_wp_from_lane_id(current_wp.lane_id)
+        if current_wp_spawn.transform.location.distance(v.get_location()) > 100:
+            spawn_point = current_wp_spawn.next(30)[0].transform
+            spawn_point.location.z += 2
+            v.set_transform(spawn_point)
+
+def spawn_traffic(num_vehicle: int):
+    spawn_distance = 10
+    vehicles = []
+    for i in range(num_vehicle):
+            vehicles.append(spawn(mid_lane_wp, spawn_distance * (i + 1)))
+    for v in vehicles:
+        v.set_autopilot(True)
+    return lambda: handle_traffic(vehicles)
 
 def __transform_vector(point: carla.Transform, transform: carla.Transform):
     point.location.x += transform.location.x

@@ -43,7 +43,7 @@ def restart():
     other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=spawn_lane2))
     other_vehicle.acc_info = ACCInfo(cc, min_permitted_offset=min_distance_offset, target_velocity=0)
     # other_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=100)
-    cb = carla_utility.spawn_traffic(2, [spawn_lane3, spawn_lane2])
+    cb = carla_utility.spawn_traffic(5)
 
 send_info and server.start_servers()
 pygame.init()
