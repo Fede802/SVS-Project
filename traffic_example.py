@@ -357,7 +357,7 @@ def main(stop_event=None):
             settings.no_rendering_mode = False
             settings.fixed_delta_seconds = None
             world.apply_settings(settings)
-
+        traffic_manager.set_synchronous_mode(False)
         print('\ndestroying %d vehicles' % len(vehicles_list))
         client.apply_batch([carla.command.DestroyActor(x) for x in vehicles_list])
 
