@@ -34,16 +34,23 @@ reward piccoli
 
 
 ## TODO
-- [ ] Multi-radar
-- [ ] Traffico superstrada (ora c'è traffico con autopilot in 2 versioni)
-- [ ] Traffico di carla (test)
-- [ ] Improvement al "HUD"
-- [ ] Improvement controlli
+- [ ] Importare Fading text per collisioni
+- [ ] Mostrare con cosa va a sbattere importando funzione di utility
+- [ ] Improvement controlli (retro, setup cruise)
 - [ ] Testare i pedali e resize in lab
+- [ ] Miglioramento mqtt
+- [ ] Dentro il controlInfo, sostituire il controllo dei veicoli con i veicoli stessi (VehicleWithRadar)
+- [ ] Aggiungere tasto per settare CC a velocità corrente
+- [ ] Multi-radar
+- [ ] Setup TrafficManager (a che target spawnare i veicoli)
+- [ ] Opt: braking model con 1/ttc invece della distanza
+- [ ] Opt: Switch scenari con traffico di carla quando si preme 3 e con 4 si riavvia
+- [ ] Opt: Selezione veicoli da spawnare
+- [X] Opt: Collision Sensor con scritte dinamiche
+- [X] Traffico superstrada (ora c'è traffico con autopilot in 2 versioni)
+- [X] Traffico di carla (test)
 - [x] Sterzo a other vehicle
 - [x] Aggiustare spawn scenario base
 - [x] Movimento dinamico dello spettare di carla (avvicinamento al veicolo)
 - [x] Aggiustare camera di carla (più dritto)
-- [ ] Opt: Collision Sensor con scritte dinamiche
-- [ ] Opt: braking model con 1/ttc invece della distanza
 
