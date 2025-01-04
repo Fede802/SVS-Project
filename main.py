@@ -80,7 +80,7 @@ try:
         control_info.obstacle_relative_velocity = ego_vehicle.relative_velocity * 3.6
         control_info.ego_control = ego_vehicle.compute_control()
         control_info.other_vehicle_control = other_vehicle.compute_control() if other_vehicle != None else carla.VehicleControl()
-      
+        control_info.ego_velocity = ego_vehicle.vehicle.get_velocity().length() * 3.6
         if(time.time() - lastUpdate > update_frequency):  
             if send_info:
                 server.send_data({"velocity": ego_vehicle.vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.vehicle.get_acceleration().length()})
@@ -94,7 +94,7 @@ try:
 
         ego_vehicle.apply_control()
         other_vehicle != None and other_vehicle.apply_control()
-        camera_manager.render(display, control_info, ego_vehicle.vehicle)
+        camera_manager.render(display, control_info)
         fading_text.tick(ego_vehicle.vehicle.get_world(), clock=clock)
         fading_text.render(display)
         carla_utility.setup_spectator(ego_vehicle.vehicle.get_transform())

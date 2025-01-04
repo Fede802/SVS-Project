@@ -74,6 +74,7 @@ class ControlInfo:
         self.ego_control = carla.VehicleControl()
         self.other_vehicle_control = carla.VehicleControl()
         self.running = True
+        self.ego_velocity = 0.0
         self.obstacle_relative_velocity = 0.0 #TODO dovrebbe essere none all'inizio
         
     def __str__(self):
@@ -160,8 +161,12 @@ class DualControl(object):
                     control.gear = max(-1, control.gear - 1)
                 elif control.manual_gear_shift and event.key == K_PERIOD:
                     control.gear = control.gear + 1
-                elif event.key == K_p:
+                elif event.key == K_p or event.key == pygame.K_o:
                     control_info.acc_info.toggle_acc()
+                    if event.key == pygame.K_p:
+                        control_info.acc_info.target_velocity = 90
+                    else:
+                        control_info.acc_info.target_velocity = control_info.ego_velocity
                     if not control_info.acc_info.is_active():
                         control.throttle = 0.0
                         control.brake = 0.0

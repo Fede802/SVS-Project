@@ -294,7 +294,7 @@ class CameraManager(object):
         self.sensor.destroy()
         self.__spawn_camera()
 
-    def render(self, display, control_info, ego_vehicle: carla.Vehicle):
+    def render(self, display, control_info):
         if self.surface is not None:
             scaled_surface = pygame.transform.scale(self.surface, display.get_size())
             display.blit(scaled_surface, (0, 0))
@@ -304,9 +304,9 @@ class CameraManager(object):
         print_text_to_screen(display, f"Hand Brake: {control_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
         print_text_to_screen(display, f"PID CC: {control_info.acc_info.is_active()}", (10, 170), (255, 255, 255))
         print_text_to_screen(display, f"Min Permitted Distance: {control_info.acc_info.min_permitted_offset}", (10, 210), (255, 255, 255))
-        print_text_to_screen(display, f"Ego Velocity: {ego_vehicle.get_velocity().length() * 3.6}", (10, 250), (255, 255, 255))
+        print_text_to_screen(display, f"Ego Velocity: {control_info.ego_velocity}", (10, 250), (255, 255, 255))
         print_text_to_screen(display, f"Target Velocity: {control_info.acc_info.target_velocity}", (10, 290), (255, 255, 255))
-        other_vehicle_velocity = ego_vehicle.get_velocity().length() * 3.6 + control_info.obstacle_relative_velocity
+        other_vehicle_velocity = control_info.ego_velocity + control_info.obstacle_relative_velocity
         print_text_to_screen(display, f"Obstacle Velocity: {other_vehicle_velocity}", (10, 330), (255, 255, 255))
 
     def _parse_image(self, image):
