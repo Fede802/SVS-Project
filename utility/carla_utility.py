@@ -237,6 +237,29 @@ def print_text_to_screen(display, text, position, color):
         text_surface = font.render(text, True, color)  # White color
         display.blit(text_surface, position)
 
+class FadingText(object):
+    def __init__(self, font, dim, pos):
+        self.font = font
+        self.dim = dim
+        self.pos = pos
+        self.seconds_left = 0
+        self.surface = pygame.Surface(self.dim)
+
+    def set_text(self, text, color=(255, 255, 255), seconds=2.0):
+        text_texture = self.font.render(text, True, color)
+        self.surface = pygame.Surface(self.dim)
+        self.seconds_left = seconds
+        self.surface.fill((0, 0, 0, 0))
+        self.surface.blit(text_texture, (10, 11))
+
+    def tick(self, _, clock):
+        delta_seconds = 1e-3 * clock.get_time()
+        self.seconds_left = max(0.0, self.seconds_left - delta_seconds)
+        self.surface.set_alpha(500.0 * self.seconds_left)
+
+    def render(self, display):
+        display.blit(self.surface, self.pos)
+
 class CameraManager(object):
     def __init__(self, parent_actor, transform_index = 0):
         self.sensor = None
@@ -294,28 +317,22 @@ class CameraManager(object):
         array = array[:, :, ::-1]
         self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
 
+def get_actor_display_name(actor, truncate=250):
+    name = ' '.join(actor.type_id.replace('_', '.').title().split('.')[1:])
+    return (name[:truncate - 1] + u'\u2026') if len(name) > truncate else name
+
 class CollisionSensor(object):
-    def __init__(self, parent_actor, display):
+    def __init__(self, parent_actor, display, fading_text):
         self.sensor = None
-        self.history = []
         self._parent = parent_actor
         self.display = display
+        self.fading_text = fading_text
         world = self._parent.get_world()
         bp = world.get_blueprint_library().find('sensor.other.collision')
         self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)
         self.sensor.listen(lambda event: self._on_collision(event, self.display))
 
-    def get_collision_history(self):
-        history = collections.defaultdict(int)
-        for frame, intensity in self.history:
-            history[frame] += intensity
-        return history
-
+    @staticmethod
     def _on_collision(self, event, display):
         # Display the collision on the screen
-        print_text_to_screen(display, f"Collision at {event.frame}", (10, 370), (255, 255, 255))
-        impulse = event.normal_impulse
-        intensity = math.sqrt(impulse.x**2 + impulse.y**2 + impulse.z**2)
-        self.history.append((event.frame, intensity))
-        if len(self.history) > 4000:
-            self.history.pop(0)
+        self.fading_text.set_text(f"Collision with {get_actor_display_name(event.other_actor)}", seconds=2.0)

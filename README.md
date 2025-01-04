@@ -34,8 +34,8 @@ reward piccoli
 
 
 ## TODO
-- [ ] Importare Fading text per collisioni
-- [ ] Mostrare con cosa va a sbattere importando funzione di utility
+- [X] Importare Fading text per collisioni
+- [X] Mostrare con cosa va a sbattere importando funzione di utility
 - [ ] Improvement controlli (retro, setup cruise)
 - [ ] Testare i pedali e resize in lab
 - [ ] Miglioramento mqtt
