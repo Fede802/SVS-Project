@@ -41,6 +41,7 @@ reward piccoli
 - [ ] Opt: braking model con 1/ttc invece della distanza
 - [ ] Opt: Switch scenari con traffico di carla quando si preme 3 e con 4 si riavvia
 - [ ] Opt: Selezione veicoli da spawnare
+- [ ] Opt: check world default settings and if not try to put in sync mode
 - [X] Setup TrafficManager (a che target spawnare i veicoli)
 - [X] Importare Fading text per collisioni
 - [X] Mostrare con cosa va a sbattere importando funzione di utility
