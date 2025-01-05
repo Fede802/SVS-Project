@@ -1,17 +1,26 @@
-import carla, time, debug_utility, math_utility, re, pygame, numpy as np, weakref, collections, math
+import carla, time, debug_utility, math_utility, re, pygame, numpy as np, weakref, collections, math, random as rnd
 from carla import ColorConverter as cc
 from vehicle_controller.rl_controller import rl_controller
 client = carla.Client('localhost', 2000)
 client.set_timeout(100.0)
 world = client.get_world()
 spectator = world.get_spectator()
+tm = client.get_trafficmanager(8000)
+tm.set_synchronous_mode(True)
 
 def load_world(world_name):
-    global world, spectator
+    global world, spectator, mid_lane_wp, left_lane_wp
     if world.get_map().name.split("/")[-1] != world_name:
         print('Loading world', world_name)
         world = client.load_world(world_name)
+        world.tick()
+        time.sleep(10)
         spectator = world.get_spectator()
+        if world_name == 'Town13':
+            mid_lane_wp = world.get_map().get_waypoint(carla.Location(x=2390, y=6110, z=187), True)
+            left_lane_wp = world.get_map().get_waypoint(carla.Location(x=2385, y=6110, z=187), True)
+        print('World loaded', world.get_map().name.split("/")[-1])
+        
 
 def __find_weather_presets():
     rgx = re.compile('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)')
@@ -44,6 +53,7 @@ def move_spectator_to(to, distance=10.0, transform = carla.Transform(carla.Locat
 
 def setup_spectator(spawn_point: carla.Transform):
     #try go back to 1000
+    print("try to move spectator to", spawn_point.location)
     if math_utility.sub(spectator.get_location(), spawn_point.location).length() > 2000:
         print('Moving spectator to', spawn_point.location)
         move_spectator_to(spawn_point)
@@ -93,6 +103,7 @@ def spawn_traffic_same_spawn(vehicle_per_lane: int):
             vehicles.append([spawn(mid_lane_wp, spawn_distance * (i + 1)), mid_lane_wp.lane_id])
             vehicles.append([spawn(mid_lane_wp.get_right_lane(), spawn_distance * (i + 1)), mid_lane_wp.get_right_lane().lane_id])
     for v in vehicles:
+        tm.set_desired_speed(v[0], rnd.randint(70, 130))
         v[0].set_autopilot(True)
     return lambda: handle_traffic_same_spawn(vehicles)
 
@@ -111,6 +122,7 @@ def spawn_traffic(num_vehicle: int):
     for i in range(num_vehicle):
             vehicles.append(spawn(mid_lane_wp, spawn_distance * (i + 1)))
     for v in vehicles:
+        tm.set_desired_speed(v, rnd.randint(70, 130))
         v.set_autopilot(True)
     return lambda: handle_traffic(vehicles)
 
@@ -245,7 +257,7 @@ class FadingText(object):
         self.seconds_left = 0
         self.surface = pygame.Surface(self.dim)
 
-    def set_text(self, text, color=(255, 255, 255), seconds=2.0):
+    def set_text(self, text, color=(255, 0, 0), seconds=2.0):
         text_texture = self.font.render(text, True, color)
         self.surface = pygame.Surface(self.dim)
         self.seconds_left = seconds
@@ -322,17 +334,15 @@ def get_actor_display_name(actor, truncate=250):
     return (name[:truncate - 1] + u'\u2026') if len(name) > truncate else name
 
 class CollisionSensor(object):
-    def __init__(self, parent_actor, display, fading_text):
+    def __init__(self, parent_actor, fading_text):
         self.sensor = None
         self._parent = parent_actor
-        self.display = display
         self.fading_text = fading_text
         world = self._parent.get_world()
         bp = world.get_blueprint_library().find('sensor.other.collision')
         self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)
-        self.sensor.listen(lambda event: self._on_collision(event, self.display))
+        self.sensor.listen(self._on_collision)
 
-    @staticmethod
-    def _on_collision(self, event, display):
+    def _on_collision(self, event):
         # Display the collision on the screen
         self.fading_text.set_text(f"Collision with {get_actor_display_name(event.other_actor)}", seconds=2.0)
