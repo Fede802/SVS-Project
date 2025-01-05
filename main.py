@@ -53,7 +53,7 @@ def restart(mode = 1):
         ego_spawn_point.location.z += 2
         ego_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=ego_spawn_point), ego_acc_info, ego_controller)
         if mode == 2:
-            cb = carla_utility.spawn_traffic(20)
+            cb = carla_utility.spawn_traffic(2)
         else:
             other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(100)[0].transform
             other_vehicle_spawn_point.location.z += 2
@@ -78,7 +78,7 @@ lastUpdate = 0
 # ego_controller = pid_controller_random.PIDController() #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
 ego_controller = rl_controller.RLController()
-restart()
+restart(2)
  
 try:
     while control_info.running:

@@ -11,7 +11,7 @@ def set_synchronous_mode(synchronous_mode=True):
     world.apply_settings(settings)
 
 world = client.get_world()
-sync_world = False
+sync_world = True
 sync_world and set_synchronous_mode()
 spectator = world.get_spectator()
 tm = client.get_trafficmanager(8000)
@@ -124,6 +124,7 @@ vehicle_list = [
 def spawn(way_point: carla.Waypoint, spawn_distance):
     spawn_point = way_point.next(spawn_distance)[0].transform
     spawn_point.location.z += 2
+    # return spawn_vehicle_bp_at('vehicle.tesla.cybertruck', spawn_point)
     return spawn_vehicle_bp_at(rnd.choice(vehicle_list), spawn_point)
 
 def get_wp_from_lane_id(lane_id):
@@ -159,9 +160,10 @@ def handle_traffic(vehicles):
         try:
             current_wp = world.get_map().get_waypoint(v.get_location(), True)
             current_wp_spawn = get_wp_from_lane_id(current_wp.lane_id)
-            if current_wp_spawn.transform.location.distance(v.get_location()) > 1500:
+            if current_wp_spawn.transform.location.distance(v.get_location()) > 1000:
                 spawn_point = current_wp_spawn.next(30)[0].transform
                 spawn_point.location.z += 2
+                v.apply_control(carla.VehicleControl())
                 v.set_transform(spawn_point)
         except:
             continue
@@ -244,12 +246,12 @@ def destroy_all_vehicle_and_sensors():
     time.sleep(2)    
 
 class VehicleWithRadar:
-    def __init__(self, vehicle, acc_info, veichle_controller = rl_controller.RLController(), show_detection=False, show_range=False, show_filter=False):
+    def __init__(self, vehicle, acc_info, vehicle_controller = rl_controller.RLController(), show_detection=False, show_range=False, show_filter=False):
         self.vehicle = vehicle
         self.acc_info = acc_info
         self.radar_detection_h_radius = radar_detection_h_radius
         self.radar_detection_v_radius = radar_detection_v_radius
-        self.vehicle_controller = veichle_controller
+        self.vehicle_controller = vehicle_controller
         self.show_detection = show_detection
         self.show_range = show_range
         self.show_filter = show_filter
