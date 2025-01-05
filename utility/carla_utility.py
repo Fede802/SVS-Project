@@ -1,6 +1,14 @@
 import carla, time, debug_utility, math_utility, re, pygame, numpy as np, weakref, collections, math, random as rnd
 from carla import ColorConverter as cc
 from vehicle_controller.rl_controller import rl_controller
+
+import sys, os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), 'mqtt_service'))
+
+import server
+
+
 client = carla.Client('localhost', 2000)
 client.set_timeout(100.0)
 
@@ -356,19 +364,19 @@ class CameraManager(object):
         self.sensor.destroy()
         self.__spawn_camera()
 
-    def render(self, display, control_info):
+    def render(self, display, program_info):
         if self.surface is not None:
             scaled_surface = pygame.transform.scale(self.surface, display.get_size())
             display.blit(scaled_surface, (0, 0))
-        print_text_to_screen(display, f"Throttle: {control_info.ego_control.throttle}", (10, 10), (255, 255, 255))
-        print_text_to_screen(display, f"Brake: {control_info.ego_control.brake}", (10, 50), (255, 255, 255))
-        print_text_to_screen(display, f"Steer: {control_info.ego_control.steer}", (10, 90), (255, 255, 255))
-        print_text_to_screen(display, f"Hand Brake: {control_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
-        print_text_to_screen(display, f"PID CC: {control_info.acc_info.is_active()}", (10, 170), (255, 255, 255))
-        print_text_to_screen(display, f"Min Permitted Distance: {control_info.acc_info.min_permitted_offset}", (10, 210), (255, 255, 255))
-        print_text_to_screen(display, f"Ego Velocity: {control_info.ego_velocity}", (10, 250), (255, 255, 255))
-        print_text_to_screen(display, f"Target Velocity: {control_info.acc_info.target_velocity}", (10, 290), (255, 255, 255))
-        other_vehicle_velocity = control_info.ego_velocity + control_info.obstacle_relative_velocity
+        print_text_to_screen(display, f"Throttle: {program_info.ego_control.throttle}", (10, 10), (255, 255, 255))
+        print_text_to_screen(display, f"Brake: {program_info.ego_control.brake}", (10, 50), (255, 255, 255))
+        print_text_to_screen(display, f"Steer: {program_info.ego_control.steer}", (10, 90), (255, 255, 255))
+        print_text_to_screen(display, f"Hand Brake: {program_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
+        print_text_to_screen(display, f"PID CC: {program_info.acc_info.is_active()}", (10, 170), (255, 255, 255))
+        print_text_to_screen(display, f"Min Permitted Distance: {program_info.acc_info.min_permitted_offset}", (10, 210), (255, 255, 255))
+        print_text_to_screen(display, f"Ego Velocity: {program_info.ego_velocity}", (10, 250), (255, 255, 255))
+        print_text_to_screen(display, f"Target Velocity: {program_info.acc_info.target_velocity}", (10, 290), (255, 255, 255))
+        other_vehicle_velocity = program_info.ego_velocity + program_info.obstacle_relative_velocity
         print_text_to_screen(display, f"Obstacle Velocity: {other_vehicle_velocity}", (10, 330), (255, 255, 255))
 
     def _parse_image(self, image):
@@ -384,7 +392,7 @@ def get_actor_display_name(actor, truncate=250):
     return (name[:truncate - 1] + u'\u2026') if len(name) > truncate else name
 
 class CollisionSensor(object):
-    def __init__(self, parent_actor, fading_text):
+    def __init__(self, parent_actor, fading_text, program_info):
         self.sensor = None
         self._parent = parent_actor
         self.fading_text = fading_text
@@ -392,7 +400,9 @@ class CollisionSensor(object):
         bp = world.get_blueprint_library().find('sensor.other.collision')
         self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)
         self.sensor.listen(self._on_collision)
+        self.program_info = program_info
 
     def _on_collision(self, event):
         # Display the collision on the screen
         self.fading_text.set_text(f"Collision with {get_actor_display_name(event.other_actor)}", seconds=2.0)
+        self.program_info.send_info and server.send_data(f"Collision with {get_actor_display_name(event.other_actor)}")

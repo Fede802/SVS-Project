@@ -2,10 +2,10 @@ import json, threading, http.server, socketserver
 import paho.mqtt.client as mqtt
 
 # Configurazione MQTT
-BROKER = "localhost"
+BROKER = "broker.hivemq.com"
 # BROKER = "test.mosquitto.org" #"localhost" # Broker MQTT (usare localhost se è locale)
 PORT = 1883           # Porta del broker MQTT
-TOPIC = "grafico/dati/sdahfkjhdkjfhals"  # Topic MQTT su cui pubblicare
+TOPIC = "svsProject/status"  # Topic MQTT su cui pubblicare
 client = mqtt.Client()
 
 class CustomHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -29,9 +29,9 @@ def start_servers():
     http_thread.daemon = True  # Il thread si chiuderà quando il programma termina
     http_thread.start()
 
-def send_data(data):
+def send_data(data, topic=TOPIC):
     # Converte i dati in formato JSON e li pubblica
-    client.publish(TOPIC, json.dumps(data))
+    client.publish(topic, json.dumps(data))
 
 def close_servers():
     client.disconnect()

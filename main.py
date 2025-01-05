@@ -6,10 +6,10 @@ import carla, time, pygame, cv2, debug_utility, carla_utility, server, plot_util
 from log_utility import Logger 
 from vehicle_controller.pid_controller import pid_controller_random_adaptive, pid_controller_scheduled_adaptive, pid_controller_random, pid_controller_scheduled
 from vehicle_controller.rl_controller import rl_controller
-from control_utility import ControlInfo, DualControl, ACCInfo
+from control_utility import ProgramInfo, DualControl, ACCInfo
 from carla_utility import CameraManager, VehicleWithRadar, CollisionSensor, FadingText
 
-send_info = False
+send_info = True
 save_info = False
 show_log = False
 show_in_carla = False
@@ -29,7 +29,7 @@ current_map = 0
 # mode 2 = town13 traffic
 # mode 3 = town10 traffic
 def restart(mode = 1):
-    global ego_vehicle, other_vehicle, camera_manager, control_info, display, collision_sensor, fading_text, cb, traffic_thread, stop_event, current_map
+    global ego_vehicle, other_vehicle, camera_manager, program_info, display, collision_sensor, fading_text, cb, traffic_thread, stop_event, current_map
     
     if traffic_thread != None:
         stop_event.set()
@@ -39,7 +39,7 @@ def restart(mode = 1):
     other_vehicle = cb = traffic_thread = None
     carla_utility.destroy_all_vehicle_and_sensors()
     ego_acc_info = ACCInfo(cc, min_permitted_offset=min_distance_offset, target_velocity=target_velocity)
-    control_info = ControlInfo(ego_acc_info)
+    program_info = ProgramInfo(ego_acc_info, send_info=send_info)
     if mode == 3 or mode == 4:
         if mode == 4:
             current_map = (current_map + 1) % len(map_list)
@@ -62,9 +62,13 @@ def restart(mode = 1):
     camera_manager = CameraManager(ego_vehicle.vehicle)
     # little text in the center of the screen
     fading_text = FadingText(pygame.font.Font(pygame.font.get_default_font(), 24))
-    collision_sensor = CollisionSensor(ego_vehicle.vehicle, fading_text)
+    collision_sensor = CollisionSensor(ego_vehicle.vehicle, fading_text, program_info)
     carla_utility.move_spectator_to(ego_vehicle.vehicle.get_transform())
-send_info and server.start_servers()
+
+if send_info:
+    server.start_servers()
+    server.send_data("Program Start")
+
 pygame.init()
 pygame.font.init()
 display = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
@@ -81,26 +85,26 @@ ego_controller = rl_controller.RLController()
 restart(2)
  
 try:
-    while control_info.running:
+    while program_info.running:
         cb != None and cb()
-        control_info.obstacle_relative_velocity = ego_vehicle.relative_velocity * 3.6
-        control_info.ego_control = ego_vehicle.compute_control()
-        control_info.other_vehicle_control = other_vehicle.compute_control() if other_vehicle != None else carla.VehicleControl()
-        control_info.ego_velocity = ego_vehicle.vehicle.get_velocity().length() * 3.6
+        program_info.obstacle_relative_velocity = ego_vehicle.relative_velocity * 3.6
+        program_info.ego_control = ego_vehicle.compute_control()
+        program_info.other_vehicle_control = other_vehicle.compute_control() if other_vehicle != None else carla.VehicleControl()
+        program_info.ego_velocity = ego_vehicle.vehicle.get_velocity().length() * 3.6
         if(time.time() - lastUpdate > update_frequency):  
-            if send_info:
-                server.send_data({"velocity": ego_vehicle.vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.vehicle.get_acceleration().length()})
+            #if send_info:
+                #server.send_data({"velocity": ego_vehicle.vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.vehicle.get_acceleration().length()})
             if save_info:
-                logger.write(str(ego_vehicle.vehicle.get_velocity().length() * 3.6)+ "," + str(ego_vehicle.vehicle.get_acceleration().length())+ "," +str(control_info.ego_control.throttle)+ "," +str(control_info.ego_control.brake))
+                logger.write(str(ego_vehicle.vehicle.get_velocity().length() * 3.6)+ "," + str(ego_vehicle.vehicle.get_acceleration().length())+ "," +str(program_info.ego_control.throttle)+ "," +str(program_info.ego_control.brake))
             lastUpdate = time.time()
 
         clock.tick_busy_loop(120)
-        if controller.parse_events(camera_manager, control_info, clock):
+        if controller.parse_events(camera_manager, program_info, clock):
             break
 
         ego_vehicle.apply_control()
         other_vehicle != None and other_vehicle.apply_control()
-        camera_manager.render(display, control_info)
+        camera_manager.render(display, program_info)
         fading_text.tick(ego_vehicle.vehicle.get_world(), clock=clock)
         fading_text.render(display)
         carla_utility.setup_spectator(ego_vehicle.vehicle.get_transform())
@@ -113,5 +117,7 @@ finally:
     cv2.destroyAllWindows()
     carla_utility.destroy_all_vehicle_and_sensors() 
     logger.close() 
-    send_info and server.close_servers()
+    if send_info:
+        server.send_data("Program End")
+        server.close_servers()
     show_log and plot_utility.plot_last_run()    

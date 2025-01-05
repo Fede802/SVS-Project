@@ -38,9 +38,9 @@ reward piccoli
 - [ ] Testare i pedali e resize in lab
 - [ ] Valutare world sync vs async
 - [ ] Migliorare traffico che si ribaltano
-- [ ] Miglioramento mqtt
 - [ ] Multi-radar
 - [ ] Opt: braking model con 1/ttc invece della distanza
+- [X] Miglioramento mqtt
 - [X] Opt: Selezione veicoli da spawnare
 - [X] Opt: Switch scenari con traffico di carla quando si preme 4 e con 3 si riavvia
 - [X] Opt: check world default settings and if not try to put in sync mode

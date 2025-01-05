@@ -9,8 +9,10 @@ To find out the values of your steering wheel use jstest-gtk in Ubuntu.
 """
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'utility'))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'mqtt_service'))
 
 import carla, carla_utility, math
+import server
 from configparser import ConfigParser
 
 import pygame
@@ -68,14 +70,15 @@ class ACCInfo:
     def toggle_acc(self): 
         self.set_active(not self.__active)
  
-class ControlInfo:
-    def __init__(self, acc_info):
+class ProgramInfo:
+    def __init__(self, acc_info, send_info = False):
         self.acc_info = acc_info
         self.ego_control = carla.VehicleControl()
         self.other_vehicle_control = carla.VehicleControl()
         self.running = True
         self.ego_velocity = 0.0
-        self.obstacle_relative_velocity = 0.0 #TODO dovrebbe essere none all'inizio
+        self.obstacle_relative_velocity = 0.0
+        self.send_info = send_info
         
     def __str__(self):
         return f"ego_control: {self.ego_control}, other_vehicle_control: {self.other_vehicle_control}, cc: {self.accInfo.is_active()}, running: {self.running}"
@@ -102,8 +105,8 @@ class DualControl(object):
         self._reverse_idx = int(self._parser.get('G29 Racing Wheel', 'reverse'))
         self._handbrake_idx = int(self._parser.get('G29 Racing Wheel', 'handbrake'))
 
-    def parse_events(self, camera_manager, control_info, clock):
-        control = control_info.ego_control
+    def parse_events(self, camera_manager, program_info, clock):
+        control = program_info.ego_control
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True
@@ -116,23 +119,27 @@ class DualControl(object):
                     camera_manager.toggle_camera()
                 elif event.button == 3:
                     carla_utility.next_weather()
+                    program_info.send_info and server.send_data("Weather Changed")
                 elif event.button == self._reverse_idx:
                     control.gear = 1 if control.reverse else -1
                 # elif event.button == 23:
                 #     world.camera_manager.next_sensor()
                 elif event.button == 10:
                     # TODO: mettere toggle distanza
-                    control_info.acc_info.change_distance_offset()
+                    program_info.acc_info.change_distance_offset()
+                    program_info.send_info and server.send_data(f"Distance Changed to {program_info.acc_info.min_permitted_offset}")
                 elif event.button == 9: 
-                    control_info.acc_info.toggle_acc()
-                    if not control_info.acc_info.is_active():
+                    program_info.acc_info.toggle_acc()
+                    if not program_info.acc_info.is_active():
                         control.throttle = 0.0
                         control.brake = 0.0
-                    
+                    program_info.send_info and server.send_data(f"ACC Toggled to {program_info.acc_info.is_active()}")
                 elif event.button == 22:
-                    control_info.acc_info.increase_target_velocity()
+                    program_info.acc_info.increase_target_velocity()
+                    program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.acc_info.target_velocity}")
                 elif event.button == 21:
-                    control_info.acc_info.decrease_target_velocity()
+                    program_info.acc_info.decrease_target_velocity()
+                    program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.acc_info.target_velocity}")
 
             elif event.type == pygame.KEYDOWN:
                 if self._is_quit_shortcut(event.key):
@@ -149,10 +156,13 @@ class DualControl(object):
                     camera_manager.toggle_camera()
                 elif event.key == K_c and pygame.key.get_mods() & KMOD_SHIFT:
                     carla_utility.next_weather(reverse=True)
+                    program_info.send_info and server.send_data("Weather Changed")
                 elif event.key == K_c:
                     carla_utility.next_weather()
+                    program_info.send_info and server.send_data("Weather Changed")
                 elif event.key == K_h:
-                    control_info.acc_info.change_distance_offset()
+                    program_info.acc_info.change_distance_offset()
+                    program_info.send_info and server.send_data(f"Distance Changed to {program_info.acc_info.min_permitted_offset}")
                 if event.key == K_q:
                     control.gear = 1 if control.reverse else -1
                 elif event.key == K_m:
@@ -164,36 +174,39 @@ class DualControl(object):
                 elif control.manual_gear_shift and event.key == K_PERIOD:
                     control.gear = control.gear + 1
                 elif event.key == K_p or event.key == pygame.K_o:
-                    control_info.acc_info.toggle_acc()
+                    program_info.acc_info.toggle_acc()
                     if event.key == pygame.K_p:
-                        control_info.acc_info.target_velocity = 90
+                        program_info.acc_info.target_velocity = 90
                     else:
-                        control_info.acc_info.target_velocity = control_info.ego_velocity
-                    if not control_info.acc_info.is_active():
+                        program_info.acc_info.target_velocity = program_info.ego_velocity
+                    if not program_info.acc_info.is_active():
                         control.throttle = 0.0
                         control.brake = 0.0
+                    program_info.send_info and server.send_data(f"ACC Toggled to {program_info.acc_info.is_active()}")
                 elif event.key == pygame.K_PLUS:
-                    control_info.acc_info.increase_target_velocity()
+                    program_info.acc_info.increase_target_velocity()
+                    program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.acc_info.target_velocity}")
                 elif event.key == pygame.K_MINUS:
-                    control_info.acc_info.decrease_target_velocity()            
+                    program_info.acc_info.decrease_target_velocity()  
+                    program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.acc_info.target_velocity}")          
 
-        self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time(), control_info)
+        self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time(), program_info)
         #self._parse_vehicle_wheel(control) #TODO "To drive start by preshing the brake pedal :')"
         control.reverse = control.gear < 0
         # world.player.apply_control(self._control)  TODO: Lasciamo commentato???????
         # control_info.ego_control = control # TODO: Dovrebbe bastare questo 
         return False
 
-    def _parse_vehicle_keys(self, keys, milliseconds, control_info):
-        control = control_info.ego_control
-        control2 = control_info.other_vehicle_control
+    def _parse_vehicle_keys(self, keys, milliseconds, program_info):
+        control = program_info.ego_control
+        control2 = program_info.other_vehicle_control
         if keys[K_w]:
             control.throttle = 1.0
             control.brake = 0.0
         if keys[K_s]:
             control.throttle = 0.0
             control.brake = 1.0
-            control_info.acc_info.set_active(False)
+            program_info.acc_info.set_active(False)
         control.hand_brake = keys[K_SPACE]
         steer_increment = 5e-4 * milliseconds
         if keys[K_a]:
