@@ -22,22 +22,28 @@ learning_rate = 0.003
 
 traffic_thread = None
 stop_event = threading.Event()
+
+map_list = ['Town01', 'Town02', 'Town03', 'Town04', 'Town05', 'Town06', 'Town07', 'Town10HD', 'Town11', 'Town12', 'Town15']
+current_map = 0
 # mode 1 = town13 two car
 # mode 2 = town13 traffic
 # mode 3 = town10 traffic
 def restart(mode = 1):
-    global ego_vehicle, other_vehicle, camera_manager, control_info, display, collision_sensor, fading_text, cb, traffic_thread, stop_event
+    global ego_vehicle, other_vehicle, camera_manager, control_info, display, collision_sensor, fading_text, cb, traffic_thread, stop_event, current_map
     
     if traffic_thread != None:
         stop_event.set()
+        carla_utility.world.tick()
         traffic_thread.join()
         stop_event.clear()
     other_vehicle = cb = traffic_thread = None
     carla_utility.destroy_all_vehicle_and_sensors()
     ego_acc_info = ACCInfo(cc, min_permitted_offset=min_distance_offset, target_velocity=target_velocity)
     control_info = ControlInfo(ego_acc_info)
-    if mode == 3:
-        carla_utility.load_world('Town10HD') 
+    if mode == 3 or mode == 4:
+        if mode == 4:
+            current_map = (current_map + 1) % len(map_list)
+        carla_utility.load_world(map_list[current_map]) 
         ego_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp(vehicle='vehicle.tesla.cybertruck'), ego_acc_info, ego_controller)
         traffic_thread = threading.Thread(target=traffic_example.main, args=(stop_event,), daemon=True)
         traffic_thread.start()
@@ -47,7 +53,7 @@ def restart(mode = 1):
         ego_spawn_point.location.z += 2
         ego_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=ego_spawn_point), ego_acc_info, ego_controller)
         if mode == 2:
-            cb = carla_utility.spawn_traffic(5)
+            cb = carla_utility.spawn_traffic(20)
         else:
             other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(100)[0].transform
             other_vehicle_spawn_point.location.z += 2
@@ -55,7 +61,7 @@ def restart(mode = 1):
             other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=other_vehicle_spawn_point), other_vehicle_acc_info)
     camera_manager = CameraManager(ego_vehicle.vehicle)
     # little text in the center of the screen
-    fading_text = FadingText(pygame.font.Font(pygame.font.get_default_font(), 12), (1280, 720), (0, 720 - 40))
+    fading_text = FadingText(pygame.font.Font(pygame.font.get_default_font(), 24))
     collision_sensor = CollisionSensor(ego_vehicle.vehicle, fading_text)
     carla_utility.move_spectator_to(ego_vehicle.vehicle.get_transform())
 send_info and server.start_servers()

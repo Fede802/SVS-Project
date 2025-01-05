@@ -3,24 +3,32 @@ from carla import ColorConverter as cc
 from vehicle_controller.rl_controller import rl_controller
 client = carla.Client('localhost', 2000)
 client.set_timeout(100.0)
+
+def set_synchronous_mode(synchronous_mode=True):
+    settings = world.get_settings()
+    settings.synchronous_mode = synchronous_mode
+    settings.fixed_delta_seconds = 0.05 if synchronous_mode else None
+    world.apply_settings(settings)
+
 world = client.get_world()
+sync_world = False
+sync_world and set_synchronous_mode()
 spectator = world.get_spectator()
 tm = client.get_trafficmanager(8000)
 tm.set_synchronous_mode(True)
+tm.set_global_distance_to_leading_vehicle(2.5)
 
 def load_world(world_name):
     global world, spectator, mid_lane_wp, left_lane_wp
     if world.get_map().name.split("/")[-1] != world_name:
         print('Loading world', world_name)
         world = client.load_world(world_name)
+        sync_world and world.tick() and set_synchronous_mode()
         world.tick()
-        time.sleep(10)
         spectator = world.get_spectator()
         if world_name == 'Town13':
             mid_lane_wp = world.get_map().get_waypoint(carla.Location(x=2390, y=6110, z=187), True)
-            left_lane_wp = world.get_map().get_waypoint(carla.Location(x=2385, y=6110, z=187), True)
-        print('World loaded', world.get_map().name.split("/")[-1])
-        
+            left_lane_wp = world.get_map().get_waypoint(carla.Location(x=2385, y=6110, z=187), True)        
 
 def __find_weather_presets():
     rgx = re.compile('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)')
@@ -53,31 +61,70 @@ def move_spectator_to(to, distance=10.0, transform = carla.Transform(carla.Locat
 
 def setup_spectator(spawn_point: carla.Transform):
     #try go back to 1000
-    print("try to move spectator to", spawn_point.location)
     if math_utility.sub(spectator.get_location(), spawn_point.location).length() > 2000:
         print('Moving spectator to', spawn_point.location)
         move_spectator_to(spawn_point)
-        time.sleep(10)
+        world.tick()
 
 def __spawn_actor(blueprint, spawn_point: carla.Transform, attach_to: carla.Actor = None):
-    
     setup_spectator(carla.Transform(math_utility.add(spawn_point.location, attach_to.get_location() if attach_to != None else carla.Location())))
     actor = world.spawn_actor(blueprint, spawn_point, attach_to)
     if isinstance(actor, carla.Vehicle):
         actor.apply_control(carla.VehicleControl(brake=0.5))
-    time.sleep(2)
+    world.tick()
     return actor
 
 old_spawn_point = carla.Transform(carla.Location(x=2388, y=6164, z=187), carla.Rotation(yaw = -88.2))
 mid_lane_wp = world.get_map().get_waypoint(carla.Location(x=2390, y=6110, z=187), True)
 left_lane_wp = world.get_map().get_waypoint(carla.Location(x=2385, y=6110, z=187), True)
 
+vehicle_list = [
+    'vehicle.audi.a2', 
+    'vehicle.nissan.micra', 
+    'vehicle.audi.tt', 
+    'vehicle.mercedes.coupe_2020', 
+    'vehicle.bmw.grandtourer', 
+    # 'vehicle.harley-davidson.low_rider', 
+    'vehicle.ford.ambulance', 
+    # 'vehicle.micro.microlino', 
+    'vehicle.carlamotors.firetruck', 
+    'vehicle.carlamotors.carlacola', 
+    'vehicle.carlamotors.european_hgv', 
+    'vehicle.ford.mustang', 
+    'vehicle.chevrolet.impala', 
+    'vehicle.lincoln.mkz_2020', 
+    'vehicle.citroen.c3', 
+    'vehicle.dodge.charger_police', 
+    'vehicle.nissan.patrol', 
+    'vehicle.jeep.wrangler_rubicon', 
+    'vehicle.mini.cooper_s', 
+    'vehicle.mercedes.coupe', 
+    'vehicle.dodge.charger_2020', 
+    'vehicle.ford.crown', 
+    'vehicle.seat.leon', 
+    'vehicle.toyota.prius', 
+    # 'vehicle.yamaha.yzf', 
+    # 'vehicle.kawasaki.ninja', 
+    # 'vehicle.bh.crossbike', 
+    # 'vehicle.mitsubishi.fusorosa', 
+    'vehicle.tesla.model3', 
+    # 'vehicle.gazelle.omafiets', 
+    'vehicle.tesla.cybertruck', 
+    # 'vehicle.diamondback.century', 
+    'vehicle.mercedes.sprinter', 
+    'vehicle.audi.etron', 
+    'vehicle.volkswagen.t2', 
+    'vehicle.lincoln.mkz_2017', 
+    'vehicle.dodge.charger_police_2020', 
+    # 'vehicle.vespa.zx125', 
+    'vehicle.mini.cooper_s_2021', 
+    'vehicle.nissan.patrol_2021', 
+    'vehicle.volkswagen.t2_2021'
+]
 def spawn(way_point: carla.Waypoint, spawn_distance):
-    blueprint_library = world.get_blueprint_library().filter('vehicle.*')[0]
-    # vehicle_bp = np.random.choice(blueprint_library)
     spawn_point = way_point.next(spawn_distance)[0].transform
     spawn_point.location.z += 2
-    return __spawn_actor(blueprint_library, spawn_point)
+    return spawn_vehicle_bp_at(rnd.choice(vehicle_list), spawn_point)
 
 def get_wp_from_lane_id(lane_id):
     if lane_id == mid_lane_wp.lane_id:
@@ -109,18 +156,24 @@ def spawn_traffic_same_spawn(vehicle_per_lane: int):
 
 def handle_traffic(vehicles):
     for v in vehicles:
-        current_wp = world.get_map().get_waypoint(v.get_location(), True)
-        current_wp_spawn = get_wp_from_lane_id(current_wp.lane_id)
-        if current_wp_spawn.transform.location.distance(v.get_location()) > 100:
-            spawn_point = current_wp_spawn.next(30)[0].transform
-            spawn_point.location.z += 2
-            v.set_transform(spawn_point)
+        try:
+            current_wp = world.get_map().get_waypoint(v.get_location(), True)
+            current_wp_spawn = get_wp_from_lane_id(current_wp.lane_id)
+            if current_wp_spawn.transform.location.distance(v.get_location()) > 1500:
+                spawn_point = current_wp_spawn.next(30)[0].transform
+                spawn_point.location.z += 2
+                v.set_transform(spawn_point)
+        except:
+            continue
+              
 
-def spawn_traffic(num_vehicle: int):
-    spawn_distance = 10
+def spawn_traffic(num_vehicle_per_lane: int):
+    spawn_distance = 50
     vehicles = []
-    for i in range(num_vehicle):
+    for i in range(num_vehicle_per_lane):
+            vehicles.append(spawn(mid_lane_wp.get_right_lane(), spawn_distance * (i + 1)))
             vehicles.append(spawn(mid_lane_wp, spawn_distance * (i + 1)))
+            vehicles.append(spawn(mid_lane_wp.get_left_lane(), spawn_distance * (i + 1)))
     for v in vehicles:
         tm.set_desired_speed(v, rnd.randint(70, 130))
         v.set_autopilot(True)
@@ -250,27 +303,22 @@ def print_text_to_screen(display, text, position, color):
         display.blit(text_surface, position)
 
 class FadingText(object):
-    def __init__(self, font, dim, pos):
+    def __init__(self, font):
         self.font = font
-        self.dim = dim
-        self.pos = pos
+        self.text_texture = self.font.render("", True, (255, 0, 0))
         self.seconds_left = 0
-        self.surface = pygame.Surface(self.dim)
 
     def set_text(self, text, color=(255, 0, 0), seconds=2.0):
-        text_texture = self.font.render(text, True, color)
-        self.surface = pygame.Surface(self.dim)
+        self.text_texture = self.font.render(text, True, color)
         self.seconds_left = seconds
-        self.surface.fill((0, 0, 0, 0))
-        self.surface.blit(text_texture, (10, 11))
 
     def tick(self, _, clock):
         delta_seconds = 1e-3 * clock.get_time()
         self.seconds_left = max(0.0, self.seconds_left - delta_seconds)
-        self.surface.set_alpha(500.0 * self.seconds_left)
+        self.text_texture.set_alpha(500.0 * self.seconds_left)
 
-    def render(self, display):
-        display.blit(self.surface, self.pos)
+    def render(self, display: pygame.Surface):
+        display.blit(self.text_texture, ((display.get_width()-self.text_texture.get_width())/2, display.get_height()-40))
 
 class CameraManager(object):
     def __init__(self, parent_actor, transform_index = 0):
