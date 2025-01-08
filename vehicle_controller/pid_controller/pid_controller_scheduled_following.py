@@ -22,7 +22,7 @@ class PID:
     
 class PIDController:
     def __init__(self, tc, buffer_size = 42, kp_velocity = 0.4, ki_velocity = 0.2, kd_velocity = 0.01, 
-                kp_distance = 1.6, ki_distance = 0.01, kd_distance = 0.7):
+                kp_distance = 0.01, ki_distance = 0.2, kd_distance = 0.01):
         self.pid_velocity = PID(tc, buffer_size, kp_velocity, ki_velocity, kd_velocity)
         self.pid_distance = PID(tc, buffer_size, kp_distance, ki_distance, kd_distance)
         self.update_frequency = tc
@@ -47,8 +47,11 @@ class PIDController:
                     ego_velocity = vehicle.vehicle.get_velocity().length() * 3.6
                     relative_velocity = vehicle.relative_velocity * 3.6
                     control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(ego_velocity + relative_velocity, ego_velocity))    
+                elif vehicle.min_depth > vehicle.acc_info.min_permitted_offset:
+                    brake = self.pid_distance.compute_control(min_permitted_distance, vehicle.min_depth)
+                    control = carla.VehicleControl(brake = brake)
                 else:
-                    control = carla.VehicleControl(brake = self.pid_distance.compute_control(min_permitted_distance, vehicle.min_depth))
+                    control = carla.VehicleControl(brake = 1.0)
                 self.last_throttle = control.throttle    
                 self.last_brake = control.brake    
                 self.last_update = time.time()

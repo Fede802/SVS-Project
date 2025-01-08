@@ -69,7 +69,7 @@ def move_spectator_to(to, distance=10.0, transform = carla.Transform(carla.Locat
 
 def setup_spectator(spawn_point: carla.Transform):
     #try go back to 1000
-    if math_utility.sub(spectator.get_location(), spawn_point.location).length() > 2000:
+    if math_utility.sub(spectator.get_location(), spawn_point.location).length() > 1000:
         print('Moving spectator to', spawn_point.location)
         move_spectator_to(spawn_point)
         world.tick()
@@ -236,7 +236,7 @@ def spawn_camera(attach_to=None, transform=carla.Transform(carla.Location(x=1.2,
     camera_bp.set_attribute('image_size_y', str(height))
     return __spawn_actor(camera_bp, transform, attach_to=attach_to)
 
-def spawn_radar(attach_to, transform=carla.Transform(carla.Location(x=1.2, z=2.2), carla.Rotation(pitch=0)), horizontal_fov = 30, vertical_fov = 30, range=100, points_per_second=1500, sensor_tick = 0):
+def spawn_radar(attach_to, transform=carla.Transform(carla.Location(x=1.2, z=2.2), carla.Rotation(pitch=0)), horizontal_fov = 30, vertical_fov = 30, range=100, points_per_second=3000, sensor_tick = 0):
     radar_bp = world.get_blueprint_library().find('sensor.other.radar')
     radar_bp.set_attribute('horizontal_fov', str(horizontal_fov))
     radar_bp.set_attribute('vertical_fov', str(vertical_fov))
@@ -249,7 +249,7 @@ def destroy_all_vehicle_and_sensors():
     for v in world.get_actors().filter('vehicle.*'):
         v.destroy()
     for v in world.get_actors().filter('sensor.*'):
-        v.stop()
+        # v.stop()
         v.destroy()
     time.sleep(2)    
 

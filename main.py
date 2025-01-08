@@ -57,7 +57,7 @@ def restart(mode = 1):
         else:
             other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(100)[0].transform
             other_vehicle_spawn_point.location.z += 2
-            other_vehicle_acc_info = ACCInfo(True, min_permitted_offset=min_distance_offset, target_velocity=40)
+            other_vehicle_acc_info = ACCInfo(False, min_permitted_offset=min_distance_offset, target_velocity=40)
             other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=other_vehicle_spawn_point), other_vehicle_acc_info)
     camera_manager = CameraManager(ego_vehicle.vehicle)
     # little text in the center of the screen
@@ -80,8 +80,8 @@ lastUpdate = 0
 # ego_controller = pid_controller_random_adaptive.PIDController(learning_rate) #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled_adaptive.PIDController(learning_rate, update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_random.PIDController() #add buffer_size = None to disable buffer
-# ego_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
-ego_controller = pid_controller_scheduled_following.PIDController(update_frequency) #add buffer_size = None to disable buffer
+ego_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
+# ego_controller = pid_controller_scheduled_following.PIDController(update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = rl_controller.RLController()
 restart()
  
