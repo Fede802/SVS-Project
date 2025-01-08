@@ -279,7 +279,7 @@ class VehicleWithRadar:
                 self.show_detection and debug_utility.draw_radar_point(self.radar_sensor, detection)
                 distances.append(detection.depth)
                 velocities.append(detection.velocity)
-                ttc.append(detection.depth / abs(detection.velocity) if abs(detection.velocity) != 0 else float('inf'))
+                ttc.append(detection.depth / detection.velocity if abs(detection.velocity) != 0 else float('inf'))
         self.min_ttc = min(ttc) if len(ttc) > 0 else float('inf')
         self.min_depth = distances[ttc.index(self.min_ttc)] if len(distances) > 0 else float('inf')
         self.relative_velocity = velocities[ttc.index(self.min_ttc)] if len(velocities) > 0 else float('inf')

@@ -4,7 +4,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'mqtt_service'))
 
 import carla, time, pygame, cv2, debug_utility, carla_utility, server, plot_utility, traffic_example, threading
 from log_utility import Logger 
-from vehicle_controller.pid_controller import pid_controller_random_adaptive, pid_controller_scheduled_adaptive, pid_controller_random, pid_controller_scheduled, pid_controller_scheduled_following
+from vehicle_controller.pid_controller import pid_controller_random_adaptive, pid_controller_scheduled_adaptive, pid_controller_random, pid_controller_scheduled, pid_controller_scheduled_following, pid_controller_scheduled_following_brake
 from vehicle_controller.rl_controller import rl_controller
 from control_utility import ProgramInfo, DualControl, ACCInfo
 from carla_utility import CameraManager, VehicleWithRadar, CollisionSensor, FadingText
@@ -80,11 +80,12 @@ lastUpdate = 0
 # ego_controller = pid_controller_random_adaptive.PIDController(learning_rate) #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled_adaptive.PIDController(learning_rate, update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_random.PIDController() #add buffer_size = None to disable buffer
-ego_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
+# ego_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled_following.PIDController(update_frequency) #add buffer_size = None to disable buffer
+ego_controller = pid_controller_scheduled_following_brake.PIDController(update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = rl_controller.RLController()
 restart()
- 
+
 try:
     while program_info.running:
         cb != None and cb()
