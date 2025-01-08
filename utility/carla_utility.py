@@ -285,10 +285,7 @@ class VehicleWithRadar:
         self.relative_velocity = velocities[ttc.index(self.min_ttc)] if len(velocities) > 0 else float('inf')
 
     def compute_control(self):
-        if self.acc_info.is_active():
-            self.vehicle_control = self.vehicle_controller.apply_control(self.acc_info, self.vehicle.get_velocity().length() * 3.6, self.min_depth)
-        else:
-            self.vehicle_control = carla.VehicleControl()
+        self.vehicle_controller.apply_control(self)
         return self.vehicle_control
     
     def apply_control(self):

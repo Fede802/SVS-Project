@@ -37,11 +37,13 @@ class PIDController:
         self.pid_velocity = PID(learning_rate, buffer_size, kp_velocity, ki_velocity, kd_velocity)
         self.pid_distance = PID(learning_rate, buffer_size, kp_distance, ki_distance, kd_distance)
 
-    def apply_control(self, control_info, current_velocity, min_depth):
-        min_permitted_distance = carla_utility.compute_security_distance(current_velocity) + control_info.min_permitted_offset
-        distance_error = min_depth - min_permitted_distance
-        if distance_error > 0:
-            return carla.VehicleControl(throttle = self.pid_velocity.compute_control(control_info.target_velocity, current_velocity))
+    def apply_control(self, vehicle):
+        if self.acc_info.is_active():
+            min_permitted_distance = carla_utility.compute_security_distance(vehicle.vehicle.get_velocity().length() * 3.6) + vehicle.acc_info.min_permitted_offset
+            distance_error = vehicle.min_depth - min_permitted_distance
+            if distance_error > 0:
+                vehicle.vehicle_control = carla.VehicleControl(throttle = self.pid_velocity.compute_control(vehicle.acc_info.target_velocity, vehicle.vehicle.get_velocity().length() * 3.6))
+            else:
+                vehicle.vehicle_control = carla.VehicleControl(brake = self.pid_distance.compute_control(min_permitted_distance, vehicle.min_depth))
         else:
-            return carla.VehicleControl(brake = self.pid_distance.compute_control(min_permitted_distance, min_depth))
-  
+            vehicle.vehicle_control = carla.VehicleControl()      

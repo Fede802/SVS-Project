@@ -30,23 +30,26 @@ class PIDController:
         self.last_throttle = 0
         self.last_brake = 0
         
-    def apply_control(self, control_info, current_velocity, min_depth):
-        if control_info.reset:
-            self.last_update = 0
-            control_info.reset = False
-            
-        if(time.time() - self.last_update > self.update_frequency):
-            min_permitted_distance = carla_utility.compute_security_distance(current_velocity) + control_info.min_permitted_offset
-            distance_error = min_depth - min_permitted_distance
-            self.last_throttle = 0
-            self.last_brake = 0
-            if distance_error > 0:
-                control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(control_info.target_velocity, current_velocity))
+    def apply_control(self, vehicle):
+        if vehicle.acc_info.is_active():
+            if vehicle.acc_info.reset:
+                self.last_update = 0
+                vehicle.acc_info.reset = False
+                
+            if(time.time() - self.last_update > self.update_frequency):
+                min_permitted_distance = carla_utility.compute_security_distance(vehicle.vehicle.get_velocity().length() * 3.6) + vehicle.acc_info.min_permitted_offset
+                distance_error = vehicle.min_depth - min_permitted_distance
+                self.last_throttle = 0
+                self.last_brake = 0
+                if distance_error > 0:
+                    control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(vehicle.acc_info.target_velocity, vehicle.vehicle.get_velocity().length() * 3.6))
+                else:
+                    control = carla.VehicleControl(brake = self.pid_distance.compute_control(min_permitted_distance, vehicle.min_depth))
+                self.last_throttle = control.throttle    
+                self.last_brake = control.brake    
+                self.last_update = time.time()
+                vehicle.vehicle_control = control
             else:
-                control = carla.VehicleControl(brake = self.pid_distance.compute_control(min_permitted_distance, min_depth))
-            self.last_throttle = control.throttle    
-            self.last_brake = control.brake    
-            self.last_update = time.time()
-            return control
+                vehicle.vehicle_control = carla.VehicleControl(throttle = self.last_throttle, brake = self.last_brake)
         else:
-            return carla.VehicleControl(throttle = self.last_throttle, brake = self.last_brake)
+            vehicle.vehicle_control = carla.VehicleControl()    
