@@ -7,13 +7,16 @@ class RLController:
         self.rl_distance = PPO.load(os.path.join(os.path.dirname(__file__), 'model', 'working_braking_model.zip'))
 
     def apply_control(self, vehicle):
-        min_permitted_distance = carla_utility.compute_security_distance(vehicle.vehicle.get_velocity().length() * 3.6) + vehicle.acc_info.min_permitted_offset + 7
-        distance_error = vehicle.min_depth - min_permitted_distance
-        if distance_error > 0:
-            action, _ = self.rl_velocity.predict([vehicle.acc_info.target_velocity, vehicle.vehicle.get_velocity().length() * 3.6], deterministic=True)
+        if vehicle.acc_info.is_active():
+            min_permitted_distance = carla_utility.compute_security_distance(vehicle.vehicle.get_velocity().length() * 3.6) + vehicle.acc_info.min_permitted_offset + 7
+            distance_error = vehicle.min_depth - min_permitted_distance
+            if distance_error > 0:
+                action, _ = self.rl_velocity.predict([vehicle.acc_info.target_velocity, vehicle.vehicle.get_velocity().length() * 3.6], deterministic=True)
+            else:
+                action, _ = self.rl_distance.predict([min_permitted_distance, vehicle.min_depth], deterministic=True)
+            action = action[0]
+            throttle = action if action >= 0 else 0
+            brake = -action if action < 0 else 0
+            vehicle.vehicle_control = carla.VehicleControl(throttle = throttle, brake = brake)
         else:
-            action, _ = self.rl_distance.predict([min_permitted_distance, vehicle.min_depth], deterministic=True)
-        action = action[0]
-        throttle = action if action >= 0 else 0
-        brake = -action if action < 0 else 0
-        return carla.VehicleControl(throttle = throttle, brake = brake)
+            vehicle.vehicle_control = carla.VehicleControl()
