@@ -22,7 +22,7 @@ class PID:
     
 class PIDController:
     def __init__(self, tc, buffer_size = 42, kp_velocity = 0.4, ki_velocity = 0.2, kd_velocity = 0.01, 
-                kp_distance = 0.3, ki_distance = 0.8, kd_distance = 0.02):
+                kp_distance = 1.2, ki_distance = 0.5, kd_distance = 0.02):
         self.pid_velocity = PID(tc, buffer_size, kp_velocity, ki_velocity, kd_velocity)
         self.pid_distance = PID(tc, buffer_size, kp_distance, ki_distance, kd_distance)
         self.update_frequency = tc
@@ -43,19 +43,12 @@ class PIDController:
                 self.last_brake = 0
                 if distance_error > 5:
                     control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(vehicle.acc_info.target_velocity, vehicle.vehicle.get_velocity().length() * 3.6))
-                elif distance_error >= 0:
+                elif distance_error > 0:
                     ego_velocity = vehicle.vehicle.get_velocity().length() * 3.6
                     relative_velocity = vehicle.relative_velocity * 3.6
                     control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(ego_velocity + relative_velocity, ego_velocity))    
                 elif vehicle.min_depth > vehicle.acc_info.min_permitted_offset:
-                    ego_velocity = vehicle.vehicle.get_velocity().length() * 3.6
-                    relative_velocity = vehicle.relative_velocity * 3.6
-                    distance_error = carla_utility.compute_security_distance(ego_velocity + relative_velocity) + vehicle.acc_info.min_permitted_offset -min_permitted_distance
-                    #distance_error = distanza_da_mantenere considerando la velocità di following - distanza di sicurezza attuale
-                    #all'inizio è grande, poi si riduce tipo il tcc, carino che il comportemento sia simile però non ha senso frenare di più quando mi avvicino alla velocità di following
-                    brake = self.pid_distance.compute_control(0, 1/distance_error if distance_error != 0 else float('inf'))
-                    # stesso discorso considerando il distance error iniziale, si frenerebbe più quando la distanza di sicurezza è simile alla distanza del veicolo davanti
-                    # brake = self.pid_distance.compute_control(0, 1/distance_error)
+                    brake = self.pid_distance.compute_control(0, 1/vehicle.min_ttc)
                     control = carla.VehicleControl(brake = brake)
                 else:
                     control = carla.VehicleControl(brake = 1.0)

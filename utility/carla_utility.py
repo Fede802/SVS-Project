@@ -55,7 +55,7 @@ def next_weather(reverse=False):
     world.set_weather(preset[0])
 
 def compute_security_distance(velocity):
-    return (velocity // 10) ** 2
+    return (velocity / 10) ** 2
 
 radar_detection_h_radius = 1
 radar_detection_v_radius = 1
