@@ -82,9 +82,9 @@ lastUpdate = 0
 # ego_controller = pid_controller_random.PIDController() #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled_following.PIDController(update_frequency) #add buffer_size = None to disable buffer
-ego_controller = pid_controller_scheduled_following_brake.PIDController(update_frequency) #add buffer_size = None to disable buffer
+#ego_controller = pid_controller_scheduled_following_brake.PIDController(update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled_following_brake_ttc.PIDController(update_frequency) #add buffer_size = None to disable buffer
-# ego_controller = rl_controller.RLController()
+ego_controller = rl_controller.RLController()
 restart()
 
 try:

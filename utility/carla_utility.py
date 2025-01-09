@@ -1,12 +1,12 @@
 import carla, time, debug_utility, math_utility, re, pygame, numpy as np, weakref, collections, math, random as rnd
 from carla import ColorConverter as cc
-from vehicle_controller.rl_controller import rl_controller
+#from vehicle_controller.rl_controller import rl_controller
 
 import sys, os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), 'mqtt_service'))
 
-import server
+#import server
 
 
 client = carla.Client('localhost', 2000)
@@ -253,6 +253,7 @@ def destroy_all_vehicle_and_sensors():
         v.destroy()
     time.sleep(2)    
 
+"""
 class VehicleWithRadar:
     def __init__(self, vehicle, acc_info, vehicle_controller = rl_controller.RLController(), show_detection=False, show_range=False, show_filter=False):
         self.vehicle = vehicle
@@ -403,3 +404,4 @@ class CollisionSensor(object):
         # Display the collision on the screen
         self.fading_text.set_text(f"Collision with {get_actor_display_name(event.other_actor)}", seconds=2.0)
         self.program_info.send_info and server.send_data(f"Collision with {get_actor_display_name(event.other_actor)}")
+        """
