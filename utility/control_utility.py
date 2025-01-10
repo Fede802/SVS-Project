@@ -215,7 +215,6 @@ class DualControl(object):
         # world.player.apply_control(self._control)  TODO: Lasciamo commentato???????
         # control_info.ego_control = control # TODO: Dovrebbe bastare questo 
         program_info.ego_control.reverse = self._reverse_cache
-        print(self._reverse_cache)
         return False
 
     def _parse_vehicle_keys(self, keys, milliseconds, program_info):

@@ -53,7 +53,7 @@ def restart(mode = 1):
         ego_spawn_point.location.z += 2
         ego_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=ego_spawn_point), ego_acc_info, ego_controller)
         if mode == 2:
-            cb = carla_utility.spawn_traffic(2)
+            cb = carla_utility.spawn_traffic(8)
         else:
             other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(100)[0].transform
             other_vehicle_spawn_point.location.z += 2
@@ -96,8 +96,8 @@ try:
         program_info.other_vehicle_control = other_vehicle.compute_control() if other_vehicle != None else carla.VehicleControl()
         program_info.ego_velocity = ego_vehicle.vehicle.get_velocity().length() * 3.6
         if(time.time() - lastUpdate > update_frequency):  
-            #if send_info:
-                #server.send_data({"velocity": ego_vehicle.vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.vehicle.get_acceleration().length()})
+            if send_info:
+                server.send_data({"velocity": ego_vehicle.vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.vehicle.get_acceleration().length()})
             if save_info:
                 logger.write(str(ego_vehicle.vehicle.get_velocity().length() * 3.6)+ "," + str(ego_vehicle.vehicle.get_acceleration().length())+ "," +str(program_info.ego_control.throttle)+ "," +str(program_info.ego_control.brake))
             lastUpdate = time.time()

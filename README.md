@@ -34,12 +34,14 @@ reward piccoli
 
 
 ## TODO
-- [ ] Improvement controlli (retro, setup cruise)
-- [ ] Testare i pedali e resize in lab
-- [ ] Valutare world sync vs async
-- [ ] Migliorare traffico che si ribaltano
 - [ ] Multi-radar
-- [ ] Opt: braking model con 1/ttc invece della distanza
+- [ ] MQTT: interfaccia e fix vari
+- [ ] Scenario 1: aggiungere CC e scritte per target vehicle
+- [X] Valutare world sync vs async
+- [X] Testare i pedali e resize in lab
+- [X] Migliorare traffico che si ribaltano
+- [X] Opt: braking model con 1/ttc invece della distanza
+- [X] Improvement controlli (retro, setup cruise)
 - [X] Miglioramento mqtt
 - [X] Opt: Selezione veicoli da spawnare
 - [X] Opt: Switch scenari con traffico di carla quando si preme 4 e con 3 si riavvia
