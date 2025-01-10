@@ -88,6 +88,7 @@ class DualControl(object):
         self._restart_callback = restart_callback
         self._ego_steer_cache = 0.0
         self._other_steer_cache = 0.0
+        self._reverse_cache = False
        
         # initialize steering wheel
         pygame.joystick.init()
@@ -111,33 +112,50 @@ class DualControl(object):
             if event.type == pygame.QUIT:
                 return True
             elif event.type == pygame.JOYBUTTONDOWN:
-                if event.button == 0:
-                    self._restart_callback()
+                if event.button == 1: #X
+                    self._restart_callback(1)
+                elif event.button == 3: #Y
+                    self._restart_callback(2)
+                elif event.button == 0: #A
+                    self._restart_callback(3) 
+                elif event.button == 2: #B
+                    self._restart_callback(4)             
                 # elif event.button == 1:
                 #     # world.hud.toggle_info()
-                elif event.button == 2:
+                elif event.button == 8:
                     camera_manager.toggle_camera()
-                elif event.button == 3:
+                elif event.button == 11:
                     carla_utility.next_weather()
                     program_info.send_info and server.send_data("Weather Changed")
                 elif event.button == self._reverse_idx:
-                    control.gear = 1 if control.reverse else -1
+                    self._reverse_cache = not self._reverse_cache
+                    #control.gear = 1 if control.reverse else -1
+                
+               
                 # elif event.button == 23:
                 #     world.camera_manager.next_sensor()
-                elif event.button == 10:
-                    # TODO: mettere toggle distanza
-                    program_info.acc_info.change_distance_offset()
-                    program_info.send_info and server.send_data(f"Distance Changed to {program_info.acc_info.min_permitted_offset}")
-                elif event.button == 9: 
+                elif event.button == 9:
                     program_info.acc_info.toggle_acc()
+                    program_info.acc_info.target_velocity = program_info.ego_velocity
                     if not program_info.acc_info.is_active():
                         control.throttle = 0.0
                         control.brake = 0.0
                     program_info.send_info and server.send_data(f"ACC Toggled to {program_info.acc_info.is_active()}")
-                elif event.button == 22:
+                elif event.button == 10:
+                    # TODO: mettere toggle distanza
+                    program_info.acc_info.change_distance_offset()
+                    program_info.send_info and server.send_data(f"Distance Changed to {program_info.acc_info.min_permitted_offset}")
+                elif event.button == 27: 
+                    program_info.acc_info.toggle_acc()
+                    program_info.acc_info.target_velocity = 90
+                    if not program_info.acc_info.is_active():
+                        control.throttle = 0.0
+                        control.brake = 0.0
+                    program_info.send_info and server.send_data(f"ACC Toggled to {program_info.acc_info.is_active()}")
+                elif event.button == 21:
                     program_info.acc_info.increase_target_velocity()
                     program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.acc_info.target_velocity}")
-                elif event.button == 21:
+                elif event.button == 22:
                     program_info.acc_info.decrease_target_velocity()
                     program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.acc_info.target_velocity}")
 
@@ -189,12 +207,15 @@ class DualControl(object):
                 elif event.key == pygame.K_MINUS:
                     program_info.acc_info.decrease_target_velocity()  
                     program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.acc_info.target_velocity}")          
-
+        
+        
         self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time(), program_info)
-        #self._parse_vehicle_wheel(control) #TODO "To drive start by preshing the brake pedal :')"
+        self._parse_vehicle_wheel(program_info) #TODO "To drive start by preshing the brake pedal :')"
         control.reverse = control.gear < 0
         # world.player.apply_control(self._control)  TODO: Lasciamo commentato???????
         # control_info.ego_control = control # TODO: Dovrebbe bastare questo 
+        program_info.ego_control.reverse = self._reverse_cache
+        print(self._reverse_cache)
         return False
 
     def _parse_vehicle_keys(self, keys, milliseconds, program_info):
@@ -235,10 +256,9 @@ class DualControl(object):
         control2.steer = round(self._other_steer_cache, 1)
         
 
-    def _parse_vehicle_wheel(self, control):
+    def _parse_vehicle_wheel(self, program_info):
         numAxes = self._joystick.get_numaxes()
         jsInputs = [float(self._joystick.get_axis(i)) for i in range(numAxes)]
-        print (jsInputs)
         jsButtons = [float(self._joystick.get_button(i)) for i in
                      range(self._joystick.get_numbuttons())]
 
@@ -274,15 +294,17 @@ class DualControl(object):
         elif brakeCmd > 1:
             brakeCmd = 1
             
-        if brakeCmd != 0:
-            control.toggle_pid()
-        control.steer = steerCmd
-        control.brake = brakeCmd
-        control.throttle = throttleCmd
+            
+        program_info.ego_control.steer = steerCmd
+        if jsInputs[self._brake_idx] != -1:
+            program_info.acc_info.set_active(False)
+            program_info.ego_control.brake = brakeCmd
+        if jsInputs[self._throttle_idx] != -1:
+            program_info.ego_control.throttle = throttleCmd
        
         #toggle = jsButtons[self._reverse_idx]
 
-        control.hand_brake = bool(jsButtons[self._handbrake_idx])
+        program_info.ego_control.hand_brake = bool(jsButtons[self._handbrake_idx])
 
     @staticmethod
     def _is_quit_shortcut(key):

@@ -289,6 +289,7 @@ class VehicleWithRadar:
         return self.vehicle_control
     
     def apply_control(self):
+        #print('Applying control', self.vehicle_control)
         self.vehicle.apply_control(self.vehicle_control)
 
     def compute_and_apply_control(self):
@@ -328,19 +329,21 @@ class FadingText(object):
         display.blit(self.text_texture, ((display.get_width()-self.text_texture.get_width())/2, display.get_height()-40))
 
 class CameraManager(object):
-    def __init__(self, parent_actor, transform_index = 0):
+    def __init__(self, display, parent_actor, transform_index = 0):
         self.sensor = None
         self.surface = None
+        self.display = display
+        self.last_width = display.get_width()
+        self.last_height = display.get_height()
         self._parent = parent_actor
         self._camera_transforms = [
-            carla.Transform(carla.Location(x=-5.5, z=2.8), carla.Rotation(pitch=-15)),
+            carla.Transform(carla.Location(x=-7.5, z=2.8), carla.Rotation(pitch=-10)),
             carla.Transform(carla.Location(x=1.6, z=1.7))]
         self.transform_index = transform_index
         # self.hud = hud
         self.sensors = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
         self.sensors.append(self._parent.get_world().get_blueprint_library().find(self.sensors[0]))
-        self.sensors[-1].set_attribute('image_size_x', "1280")
-        self.sensors[-1].set_attribute('image_size_y', "720")
+        
         # if item[0].startswith('sensor.camera'):
         #     bp.set_attribute('image_size_x', str(hud.dim[0]))
         #     bp.set_attribute('image_size_y', str(hud.dim[1]))
@@ -348,11 +351,14 @@ class CameraManager(object):
         self.__spawn_camera()    
 
     def __spawn_camera(self):
+        self.sensors[-1].set_attribute('image_size_x', str(self.display.get_width()))
+        self.sensors[-1].set_attribute('image_size_y', str(self.display.get_height()))
+        self.last_width = self.display.get_width()
+        self.last_height = self.display.get_height()
         self.sensor = self._parent.get_world().spawn_actor(
             self.sensors[-1],
             self._camera_transforms[self.transform_index],
-            attach_to=self._parent)
-    
+            attach_to=self._parent)    
         self.sensor.listen(self._parse_image)
 
     #change camera view
@@ -365,6 +371,10 @@ class CameraManager(object):
         if self.surface is not None:
             scaled_surface = pygame.transform.scale(self.surface, display.get_size())
             display.blit(scaled_surface, (0, 0))
+        if self.last_width != display.get_width() or self.last_height != display.get_height():
+            self.__spawn_camera()
+        #self.sensor.set_image_size(display.get_width(), display.get_height())
+           
         print_text_to_screen(display, f"Throttle: {program_info.ego_control.throttle}", (10, 10), (255, 255, 255))
         print_text_to_screen(display, f"Brake: {program_info.ego_control.brake}", (10, 50), (255, 255, 255))
         print_text_to_screen(display, f"Steer: {program_info.ego_control.steer}", (10, 90), (255, 255, 255))

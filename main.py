@@ -59,7 +59,7 @@ def restart(mode = 1):
             other_vehicle_spawn_point.location.z += 2
             other_vehicle_acc_info = ACCInfo(False, min_permitted_offset=min_distance_offset, target_velocity=40)
             other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=other_vehicle_spawn_point), other_vehicle_acc_info)
-    camera_manager = CameraManager(ego_vehicle.vehicle)
+    camera_manager = CameraManager(display, ego_vehicle.vehicle)
     # little text in the center of the screen
     fading_text = FadingText(pygame.font.Font(pygame.font.get_default_font(), 24))
     collision_sensor = CollisionSensor(ego_vehicle.vehicle, fading_text, program_info)
@@ -72,6 +72,7 @@ if send_info:
 pygame.init()
 pygame.font.init()
 display = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
+
 clock = pygame.time.Clock()
 controller = DualControl(restart_callback=restart)
 logger = Logger()
@@ -82,8 +83,8 @@ lastUpdate = 0
 # ego_controller = pid_controller_random.PIDController() #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled_following.PIDController(update_frequency) #add buffer_size = None to disable buffer
-ego_controller = pid_controller_scheduled_following_brake.PIDController(update_frequency) #add buffer_size = None to disable buffer
-# ego_controller = pid_controller_scheduled_following_brake_ttc.PIDController(update_frequency) #add buffer_size = None to disable buffer
+# ego_controller = pid_controller_scheduled_following_brake.PIDController(update_frequency) #add buffer_size = None to disable buffer
+ego_controller = pid_controller_scheduled_following_brake_ttc.PIDController(update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = rl_controller.RLController()
 restart()
 
