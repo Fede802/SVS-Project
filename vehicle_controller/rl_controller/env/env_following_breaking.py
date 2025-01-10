@@ -15,7 +15,7 @@ class GymEnv(gym.Env):
         self.action_space = spaces.Box(
             low=-1.0, 
             high=1.0, 
-            dtype=float
+            dtype=np.float32
         ) # -1 max break, 1 max throttle
        
         self.observation_space = spaces.Box(
@@ -78,14 +78,16 @@ class GymEnv(gym.Env):
         self.ego_vehicle.apply_control(carla.VehicleControl(throttle=float(action[0]), brake=float(action[1])))
         obs = self._get_observation()  
         reward = self._compute_reward(obs, float(action[1]))
+        truncated = False
         done = self._check_done(obs)
+        info = {}
         print(f"1/ttc: {obs[0]}, distances: {obs[1]}, security_distance: {obs[2]}, reward: {reward}")    
-        return obs, reward, done, False, {}
+        return obs, reward, done, truncated, info
     
     def _get_observation(self):
         current_velocity = self.ego_vehicle.get_velocity().length() * 3.6
         security_distance = carla_utility.compute_security_distance(current_velocity) + self.min_distance_offset 
-        return self.radar_data["ttc"], self.radar_data["distance"], security_distance
+        return np.array([self.radar_data["ttc"], self.radar_data["distance"], security_distance], dtype=np.float32)
 
     def _compute_reward(self, observation, brake_intensity):
         ttc, distance, security_distance = observation
@@ -102,7 +104,7 @@ class GymEnv(gym.Env):
         elif security_distance - 0.2 <= distance <= security_distance + 0.2: security_distance_penalty += 10 - abs(security_distance - distance)
         else: security_distance_penalty = 0
 
-        if brake_intensity > 0.8: brake_intensity_penalty += brake_intensity
+        if brake_intensity > 0.8: brake_intensity_penalty += abs(brake_intensity - brake_intensity)
 
         return ttc_penalty + security_distance_penalty + brake_intensity_penalty
             
@@ -110,4 +112,4 @@ class GymEnv(gym.Env):
     def _check_done(self, observation):
         ttc, distance, security_distance = observation
         self.step_count += 1
-        return self.step_count > 1024 or distance <= 1.0
+        return False #self.step_count > 1024 or distance <= 1.0
