@@ -19,7 +19,7 @@ def set_synchronous_mode(synchronous_mode=True):
     world.apply_settings(settings)
 
 world = client.get_world()
-sync_world = True
+sync_world = False
 sync_world and set_synchronous_mode()
 spectator = world.get_spectator()
 tm = client.get_trafficmanager(8000)

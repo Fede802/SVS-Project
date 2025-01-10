@@ -29,6 +29,9 @@ class GymEnv(gym.Env):
         other_vehicle_offset = carla_utility.compute_security_distance(ego_velocity) + self.min_distance_offset
         self.ego_vehicle = carla_utility.spawn_vehicle_bp_at('vehicle.tesla.cybertruck', spawn_point=self.SPAWN_POINT)
         self.leader_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(self.ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=other_vehicle_offset)
+        
+        self.radar_sensor = carla_utility.spawn_radar(self.ego_vehicle, range=self.RADAR_RANGE)
+        self.radar_sensor.listen(self._radar_callback)
 
     def __reset(self, ego_velocity, leader_velocity):
         carla_utility.destroy_all_vehicle_and_sensors() #to avoid spawning bugs
@@ -36,8 +39,6 @@ class GymEnv(gym.Env):
         self.step_count = 0
 
         self.__spawn_vehicles(ego_velocity)
-        self.radar_sensor = carla_utility.spawn_radar(self.ego_vehicle, range=self.RADAR_RANGE)
-        self.radar_sensor.listen(self._radar_callback)
 
         self.ego_vehicle.set_target_velocity(debug_utility.get_velocity_vector(ego_velocity / 3.6, self.SPAWN_POINT.rotation))
         self.leader_vehicle.set_target_velocity(debug_utility.get_velocity_vector(leader_velocity / 3.6, self.SPAWN_POINT.rotation))

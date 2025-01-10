@@ -7,11 +7,10 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.env_checker import check_env
 from env import env_cc, env_braking, env_braking2, env_braking3, env_following_breaking
 
-#env = env_cc.GymEnv() #could be wrapped with VecMonitor to make additional check on observation coerence but okay
-#env = env_braking.GymEnv() #could be wrapped with VecMonitor to make additional check on observation coerence but okay
+#env = env_cc.GymEnv() #could be wrapped with VecMonitor to make additional check on observation coerence but okay#env = env_braking.GymEnv() #could be wrapped with VecMonitor to make additional check on observation coerence but okay
 # gym_env = env_braking2.GymEnv() #could be wrapped with VecMonitor to make additional check on observation coerence but okay
-env = env_braking3.GymEnv() #could be wrapped with VecMonitor to make additional check on observation coerence but okay
-#env = env_following_breaking.GymEnv() #could be wrapped with VecMonitor to make additional check on observation coerence but okay
+#env = env_braking3.GymEnv() #could be wrapped with VecMonitor to make additional check on observation coerence but okay
+env = env_following_breaking.GymEnv() #could be wrapped with VecMonitor to make additional check on observation coerence but okay
 #env = Monitor(env)
 
 #check_env(env)
@@ -33,7 +32,7 @@ model = PPO(
     tensorboard_log="./log")
 
 callback = EvalCallback(env, best_model_save_path='./',
-                        log_path='./', eval_freq=n_epochs,
+                        log_path='./', eval_freq=n_steps * 50,
                         deterministic=True, render=False)
 
 checkpoint_callback = CheckpointCallback(
