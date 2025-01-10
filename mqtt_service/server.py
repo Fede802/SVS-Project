@@ -2,12 +2,15 @@ import json, threading, http.server, socketserver
 import paho.mqtt.client as mqtt
 
 # Configurazione MQTT
-BROKER = "5cdd7fb827074230b4088a9be79ac978.s1.eu.hivemq.cloud"
+BROKER = "broker.hivemq.com"
 # BROKER = "test.mosquitto.org" #"localhost" # Broker MQTT (usare localhost se è locale)
-PORT = 8883           # Porta del broker MQTT
+PORT = 1883           # Porta del broker MQTT
 TOPIC = "svsProject/status"  # Topic MQTT su cui pubblicare
 client = mqtt.Client()
-client.username_pw_set("admin", "Admin111")
+# Uncomment for ad-hoc connection
+# client.username = "admin"
+# client.password = "Admin111"
+# client.tls_set()
 
 class CustomHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -24,8 +27,10 @@ def start_http_server():
     
 def start_servers():
     # Connessione al broker
+    client.on_connect_failure = lambda client, userdata, flags, rc: print("Connessione fallita: ", rc)
+    client.on_connect = lambda client, userdata, flags, rc: print("Connesso con codice: ", rc)
     client.connect(BROKER, PORT, 60)
-    print("Connessione riuscita: ", client.is_connected())
+    
     # Avvia il server HTTP in un thread separato
     # http_thread = threading.Thread(target=start_http_server)
     # http_thread.daemon = True  # Il thread si chiuderà quando il programma termina
