@@ -33,7 +33,7 @@ def draw_radar_point(radar: carla.Actor, point: carla.RadarDetection, life_time 
 
 def draw_radar_point_cloud_range(radar: carla.Actor, h_radius, v_radius, life_time = 0.1, color = carla.Color(255, 0, 0)):
     debug = radar.get_world().debug
-    radar_range = int(radar.attributes.get('range'))
+    radar_range = float(radar.attributes.get('range'))
     baseVersor1, baseVersor2 = math_utility.get_plane_base_versor_from_normal_versor(radar.get_transform().get_forward_vector())
     
     baseVersor1Shift = math_utility.vector_scalar_op(lambda a, b: h_radius * a, baseVersor1)

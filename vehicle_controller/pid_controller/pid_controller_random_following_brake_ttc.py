@@ -35,17 +35,26 @@ class PIDController:
                 kp_distance = 0.03, ki_distance = 0.9, kd_distance = 0.0):
         self.pid_velocity = PID(buffer_size, kp_velocity, ki_velocity, kd_velocity)
         self.pid_distance = PID(buffer_size, kp_distance, ki_distance, kd_distance)
+        self.following = False
+
         
 
     def apply_control(self, vehicle: carla_utility.VehicleWithRadar):
         if vehicle.acc_info.is_active():
+            if vehicle.acc_info.reset:
+                vehicle.acc_info.reset = False
+                self.following = False
             min_permitted_distance = carla_utility.compute_security_distance(vehicle.vehicle.get_velocity().length() * 3.6) + vehicle.acc_info.min_permitted_offset
             distance_error = vehicle.min_depth - min_permitted_distance
-            self.last_throttle = 0
-            self.last_brake = 0
-            if distance_error > 5:
+            
+            if self.following and distance_error > 50:
+                    self.following = False
+            elif not self.following and distance_error < 10:
+                    self.following = True    
+
+            if not self.following:
                 control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(vehicle.acc_info.target_velocity, vehicle.vehicle.get_velocity().length() * 3.6))
-            elif distance_error > 0:
+            elif self.following and distance_error > 0:
                 ego_velocity = vehicle.vehicle.get_velocity().length() * 3.6
                 relative_velocity = vehicle.relative_velocity * 3.6
                 control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(ego_velocity + relative_velocity, ego_velocity)) 

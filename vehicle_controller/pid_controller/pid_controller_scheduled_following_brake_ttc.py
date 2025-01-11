@@ -46,24 +46,20 @@ class PIDController:
                 distance_error = vehicle.min_depth - min_permitted_distance
                 self.last_throttle = 0
                 self.last_brake = 0
-                if self.following and distance_error > 30:
+                if self.following and distance_error > 50:
                     self.following = False
                 elif not self.following and distance_error < 5:
                     self.following = True    
 
-                print("Distance Error: ", vehicle.min_depth, min_permitted_distance,distance_error)
                 if not self.following:
-                    print("Throttle1")
                     control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(vehicle.acc_info.target_velocity, vehicle.vehicle.get_velocity().length() * 3.6))
-                    self.pid_distance.resetBuffer()
+                    # self.pid_distance.resetBuffer()
                 elif self.following and distance_error > 0:
-                    print("Throttle2")
                     ego_velocity = vehicle.vehicle.get_velocity().length() * 3.6
                     relative_velocity = vehicle.relative_velocity * 3.6
                     control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(ego_velocity + relative_velocity, ego_velocity))   
                 elif vehicle.min_depth > vehicle.acc_info.min_permitted_offset:
                     brake = self.pid_distance.compute_control(0, 1/vehicle.min_ttc)
-                    print("Brake: ", brake)
                     control = carla.VehicleControl(brake = brake)
                     # self.pid_velocity.resetBuffer()
                 else:

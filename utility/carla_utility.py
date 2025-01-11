@@ -236,7 +236,7 @@ def spawn_camera(attach_to=None, transform=carla.Transform(carla.Location(x=1.2,
     camera_bp.set_attribute('image_size_y', str(height))
     return __spawn_actor(camera_bp, transform, attach_to=attach_to)
 
-def spawn_radar(attach_to, transform=carla.Transform(carla.Location(x=1.2, z=2.2), carla.Rotation(pitch=0)), horizontal_fov = 30, vertical_fov = 30, range=100, points_per_second=3000, sensor_tick = 0):
+def spawn_radar(attach_to, transform=carla.Transform(carla.Location(x=1.2, z=1.8), carla.Rotation(pitch=0)), horizontal_fov = 30, vertical_fov = 30, range=100, points_per_second=100000, sensor_tick = 0):
     radar_bp = world.get_blueprint_library().find('sensor.other.radar')
     radar_bp.set_attribute('horizontal_fov', str(horizontal_fov))
     radar_bp.set_attribute('vertical_fov', str(vertical_fov))
@@ -273,10 +273,11 @@ class VehicleWithRadar:
         distances = []
         velocities = []
         ttc = []
-
+        debug_utility.draw_radar_point_cloud_range(self.radar, self.radar_detection_h_radius, self.radar_detection_v_radius)
         for detection in data:
             if debug_utility.evaluate_point(self.radar, detection, self.radar_detection_h_radius, self.radar_detection_v_radius):
-                self.show_detection and debug_utility.draw_radar_point(self.radar_sensor, detection)
+                # self.show_detection and debug_utility.draw_radar_point(self.radar_sensor, detection)
+                debug_utility.draw_radar_point(self.radar, detection)
                 distances.append(detection.depth)
                 velocities.append(detection.velocity)
                 ttc.append(detection.depth / detection.velocity if abs(detection.velocity) != 0 else float('inf'))

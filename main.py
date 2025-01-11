@@ -55,7 +55,7 @@ def restart(mode = 1):
         if mode == 2:
             cb = carla_utility.spawn_traffic(8)
         else:
-            other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(500)[0].transform
+            other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(400)[0].transform
             other_vehicle_spawn_point.location.z += 2
             other_vehicle_acc_info = ACCInfo(True, min_permitted_offset=min_distance_offset, target_velocity=0)
             other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=other_vehicle_spawn_point), other_vehicle_acc_info)
@@ -96,6 +96,7 @@ try:
         program_info.ego_control = ego_vehicle.compute_control()
         program_info.other_vehicle_control = other_vehicle.compute_control() if other_vehicle != None else carla.VehicleControl()
         program_info.ego_velocity = ego_vehicle.vehicle.get_velocity().length() * 3.6
+        
         if(time.time() - lastUpdate > update_frequency):  
             # if send_info:
             #     server.send_data({"velocity": ego_vehicle.vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.vehicle.get_acceleration().length()})
