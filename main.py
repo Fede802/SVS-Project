@@ -4,19 +4,19 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'mqtt_service'))
 
 import carla, time, pygame, cv2, debug_utility, carla_utility, server, plot_utility, traffic_example, threading
 from log_utility import Logger 
-from vehicle_controller.pid_controller import pid_controller_random_adaptive, pid_controller_scheduled_adaptive, pid_controller_random, pid_controller_scheduled, pid_controller_scheduled_following, pid_controller_scheduled_following_brake, pid_controller_scheduled_following_brake_ttc
+from vehicle_controller.pid_controller import pid_controller_random_adaptive, pid_controller_scheduled_adaptive, pid_controller_random, pid_controller_scheduled, pid_controller_scheduled_following, pid_controller_scheduled_following_brake, pid_controller_scheduled_following_brake_ttc, pid_controller_random_following_brake_ttc
 from vehicle_controller.rl_controller import rl_controller
 from control_utility import ProgramInfo, DualControl, ACCInfo
 from carla_utility import CameraManager, VehicleWithRadar, CollisionSensor, FadingText
 
 send_info = True
-save_info = False
-show_log = False
+save_info = True
+show_log = True
 show_in_carla = False
-cc = False
+cc = True
 update_frequency = 0.01 #seconds
 
-target_velocity = 90
+target_velocity = 110
 min_distance_offset = 7
 learning_rate = 0.003
 
@@ -55,9 +55,9 @@ def restart(mode = 1):
         if mode == 2:
             cb = carla_utility.spawn_traffic(8)
         else:
-            other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(100)[0].transform
+            other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(500)[0].transform
             other_vehicle_spawn_point.location.z += 2
-            other_vehicle_acc_info = ACCInfo(False, min_permitted_offset=min_distance_offset, target_velocity=40)
+            other_vehicle_acc_info = ACCInfo(True, min_permitted_offset=min_distance_offset, target_velocity=0)
             other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=other_vehicle_spawn_point), other_vehicle_acc_info)
     camera_manager = CameraManager(display, ego_vehicle.vehicle)
     # little text in the center of the screen
@@ -84,6 +84,7 @@ lastUpdate = 0
 # ego_controller = pid_controller_scheduled.PIDController(update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled_following.PIDController(update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled_following_brake.PIDController(update_frequency) #add buffer_size = None to disable buffer
+# ego_controller = pid_controller_random_following_brake_ttc.PIDController() #add buffer_size = None to disable buffer
 ego_controller = pid_controller_scheduled_following_brake_ttc.PIDController(update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = rl_controller.RLController()
 restart()
@@ -100,6 +101,7 @@ try:
             #     server.send_data({"velocity": ego_vehicle.vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.vehicle.get_acceleration().length()})
             if save_info:
                 logger.write(str(ego_vehicle.vehicle.get_velocity().length() * 3.6)+ "," + str(ego_vehicle.vehicle.get_acceleration().length())+ "," +str(program_info.ego_control.throttle)+ "," +str(program_info.ego_control.brake))
+                # Log brake and distance to obstacle
             lastUpdate = time.time()
 
         clock.tick_busy_loop(120)

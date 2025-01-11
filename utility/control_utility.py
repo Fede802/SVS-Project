@@ -210,7 +210,7 @@ class DualControl(object):
         
         
         self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time(), program_info)
-        self._parse_vehicle_wheel(program_info) #TODO "To drive start by preshing the brake pedal :')"
+        # self._parse_vehicle_wheel(program_info) #TODO "To drive start by preshing the brake pedal :')"
         control.reverse = control.gear < 0
         # world.player.apply_control(self._control)  TODO: Lasciamo commentato???????
         # control_info.ego_control = control # TODO: Dovrebbe bastare questo 

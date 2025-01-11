@@ -14,9 +14,11 @@ def __parse_log_file(log_file, log_dir = "logs"):
         throttles.append(float(values[2]))
         brakes.append(float(values[3]))
     return velocities, accelerations, throttles, brakes
+    # return velocities, accelerations
 
 def plot_last_run():
     velocities, accelerations, throttles, brakes = __parse_log_file(log_utility.get_last_log_file())
+    # velocities, accelerations = __parse_log_file(log_utility.get_last_log_file())
     x = range(0, len(velocities))
     fig, axs = plt.subplots(2, 2, figsize=(10, 8))
     axs[0,0].plot(x, velocities, 'r', label='Velocity')
@@ -43,6 +45,7 @@ def custom_plot(*plot_files, names, log_dir = "logs"):
 
     for plot_file in plot_files:
         velocity, acceleration, throttle, brake = __parse_log_file(plot_file, log_dir)
+        # velocity, acceleration = __parse_log_file(plot_file, log_dir)
         velocities.append(velocity)
         accelerations.append(acceleration)
         throttles.append(throttle)
@@ -81,4 +84,5 @@ def custom_plot(*plot_files, names, log_dir = "logs"):
 
 if __name__ == "__main__":
     random.seed(42)
-    custom_plot("log_29.txt", "log_26.txt", "log_27.txt", "log_28.txt", names=["Random-Adaptive", "Random", "Scheduled-Adaptive", "Scheduled"])    
+    custom_plot("log_3.txt", names=["Random-Adaptive"])    
+    # custom_plot("log_1.txt", "log_26.txt", "log_27.txt", "log_28.txt", names=["Random-Adaptive", "Random", "Scheduled-Adaptive", "Scheduled"])    
