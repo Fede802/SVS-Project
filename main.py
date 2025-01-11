@@ -55,9 +55,9 @@ def restart(mode = 1):
         if mode == 2:
             cb = carla_utility.spawn_traffic(8)
         else:
-            other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(400)[0].transform
+            other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(500)[0].transform
             other_vehicle_spawn_point.location.z += 2
-            other_vehicle_acc_info = ACCInfo(True, min_permitted_offset=min_distance_offset, target_velocity=0)
+            other_vehicle_acc_info = ACCInfo(True, min_permitted_offset=min_distance_offset, target_velocity=110)
             other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=other_vehicle_spawn_point), other_vehicle_acc_info)
     camera_manager = CameraManager(display, ego_vehicle.vehicle)
     # little text in the center of the screen
