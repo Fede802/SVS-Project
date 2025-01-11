@@ -39,7 +39,6 @@ def restart(mode = 1):
     other_vehicle = cb = traffic_thread = None
     carla_utility.destroy_all_vehicle_and_sensors()
     ego_acc_info = ACCInfo(cc, min_permitted_offset=min_distance_offset, target_velocity=target_velocity)
-    program_info = ProgramInfo(ego_acc_info, send_info=send_info)
     if mode == 3 or mode == 4:
         if mode == 4:
             current_map = (current_map + 1) % len(map_list)
@@ -62,6 +61,7 @@ def restart(mode = 1):
     camera_manager = CameraManager(display, ego_vehicle.vehicle)
     # little text in the center of the screen
     fading_text = FadingText(pygame.font.Font(pygame.font.get_default_font(), 24))
+    program_info = ProgramInfo(ego_vehicle, other_vehicle, send_info=send_info)
     collision_sensor = CollisionSensor(ego_vehicle.vehicle, fading_text, program_info)
     carla_utility.move_spectator_to(ego_vehicle.vehicle.get_transform())
 
@@ -92,11 +92,7 @@ restart()
 try:
     while program_info.running:
         cb != None and cb()
-        program_info.obstacle_relative_velocity = ego_vehicle.relative_velocity * 3.6
-        program_info.ego_control = ego_vehicle.compute_control()
-        program_info.other_vehicle_control = other_vehicle.compute_control() if other_vehicle != None else carla.VehicleControl()
-        program_info.ego_velocity = ego_vehicle.vehicle.get_velocity().length() * 3.6
-        
+        program_info.reset()
         if(time.time() - lastUpdate > update_frequency):  
             # if send_info:
             #     server.send_data({"velocity": ego_vehicle.vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.vehicle.get_acceleration().length()})

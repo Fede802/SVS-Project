@@ -306,9 +306,11 @@ class VehicleWithRadar:
     def get_transform(self):
         return self.vehicle.get_transform()
     
-def print_text_to_screen(display, text, position, color):
+def print_text_to_screen(display, text, position, color, right=False):
         font = pygame.font.Font(None, 36)  # You can choose the font and size
         text_surface = font.render(text, True, color)  # White color
+        if right:
+            position = (display.get_width() - text_surface.get_width() - position[0], position[1])
         display.blit(text_surface, position)
 
 class FadingText(object):
@@ -379,13 +381,20 @@ class CameraManager(object):
         print_text_to_screen(display, f"Throttle: {program_info.ego_control.throttle}", (10, 10), (255, 255, 255))
         print_text_to_screen(display, f"Brake: {program_info.ego_control.brake}", (10, 50), (255, 255, 255))
         print_text_to_screen(display, f"Steer: {program_info.ego_control.steer}", (10, 90), (255, 255, 255))
-        print_text_to_screen(display, f"Hand Brake: {program_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
-        print_text_to_screen(display, f"PID CC: {program_info.acc_info.is_active()}", (10, 170), (255, 255, 255))
-        print_text_to_screen(display, f"Min Permitted Distance: {program_info.acc_info.min_permitted_offset}", (10, 210), (255, 255, 255))
-        print_text_to_screen(display, f"Ego Velocity: {program_info.ego_velocity}", (10, 250), (255, 255, 255))
-        print_text_to_screen(display, f"Target Velocity: {program_info.acc_info.target_velocity}", (10, 290), (255, 255, 255))
+        print_text_to_screen(display, f"Reverse: {program_info.ego_control.reverse}", (10, 130), (255, 255, 255))
+        print_text_to_screen(display, f"CC: {program_info.ego_vehicle.acc_info.is_active()}", (10, 170), (255, 255, 255))
+        print_text_to_screen(display, f"Distance Mode: {((program_info.ego_vehicle.acc_info.min_permitted_offset % 7)+1)}({program_info.ego_vehicle.acc_info.min_permitted_offset}", (10, 210), (255, 255, 255))
+        print_text_to_screen(display, f"Target Velocity: {program_info.ego_vehicle.acc_info.target_velocity}", (10, 250), (255, 255, 255))
+        print_text_to_screen(display, f"Ego Velocity: {program_info.ego_velocity}", (10, 290), (255, 255, 255))
         other_vehicle_velocity = program_info.ego_velocity + program_info.obstacle_relative_velocity
         print_text_to_screen(display, f"Obstacle Velocity: {other_vehicle_velocity}", (10, 330), (255, 255, 255))
+        print_text_to_screen(display, f"Min TTC: {program_info.ego_vehicle.min_ttc}", (10, 370), (255, 255, 255))
+        print_text_to_screen(display, f"Min Depth: {program_info.ego_vehicle.min_depth}", (10, 410), (255, 255, 255))
+        if program_info.other_vehicle != None:
+            print_text_to_screen(display, f"CC: {program_info.other_vehicle.acc_info.is_active()}", (10, display.get_height() - 130), (255, 255, 255))
+            print_text_to_screen(display, f"Target Velocity: {program_info.other_vehicle.acc_info.target_velocity}", (10, display.get_height() - 90), (255, 255, 255))
+            print_text_to_screen(display, f"Other Vehicle Velocity: {program_info.other_vehicle.vehicle.get_velocity().length() * 3.6}", (10, display.get_height() - 50), (255, 255, 255))
+
 
     def _parse_image(self, image):
         image.convert(self.sensors[1])

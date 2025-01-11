@@ -31,12 +31,18 @@ Acc Schema Image:
 env step call
 reward piccoli
 
+## TEST
+pre:
+solo velocità adaptive e random
+solo velocita adaptive buffer
+velocità + following down + following up + frenata
+da controllare i range di switch following, braking e reset se ha senso fare il reset dei buffer
 
 
 ## TODO
 - [ ] Multi-radar
 - [ ] MQTT: interfaccia e fix vari
-- [ ] Scenario 1: aggiungere CC e scritte per target vehicle
+- [X] Scenario 1: aggiungere CC e scritte per target vehicle
 - [X] Valutare world sync vs async
 - [X] Testare i pedali e resize in lab
 - [X] Migliorare traffico che si ribaltano

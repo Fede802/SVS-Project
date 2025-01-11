@@ -43,6 +43,9 @@ from pygame.locals import K_q
 from pygame.locals import K_r
 from pygame.locals import K_s
 from pygame.locals import K_w
+from pygame.locals import K_v
+from pygame.locals import K_b
+from pygame.locals import K_n
 
 class ACCInfo:
     def __init__(self, active = False, target_velocity = None, min_permitted_offset = None, reset = False):
@@ -71,14 +74,22 @@ class ACCInfo:
         self.set_active(not self.__active)
  
 class ProgramInfo:
-    def __init__(self, acc_info, send_info = False):
-        self.acc_info = acc_info
+    def __init__(self, ego_vehicle, other_vehicle, send_info = False):
+        self.ego_vehicle = ego_vehicle
+        self.other_vehicle = other_vehicle
         self.ego_control = carla.VehicleControl()
         self.other_vehicle_control = carla.VehicleControl()
         self.running = True
         self.ego_velocity = 0.0
         self.obstacle_relative_velocity = 0.0
         self.send_info = send_info
+        self.reset()
+
+    def reset(self):
+        self.ego_control = self.ego_vehicle.compute_control()
+        self.other_vehicle_control = self.other_vehicle.compute_control() if self.other_vehicle != None else carla.VehicleControl()
+        self.obstacle_relative_velocity = self.ego_vehicle.relative_velocity * 3.6
+        self.ego_velocity = self.ego_vehicle.vehicle.get_velocity().length() * 3.6
         
     def __str__(self):
         return f"ego_control: {self.ego_control}, other_vehicle_control: {self.other_vehicle_control}, cc: {self.accInfo.is_active()}, running: {self.running}"
@@ -135,29 +146,29 @@ class DualControl(object):
                 # elif event.button == 23:
                 #     world.camera_manager.next_sensor()
                 elif event.button == 9:
-                    program_info.acc_info.toggle_acc()
-                    program_info.acc_info.target_velocity = program_info.ego_velocity
-                    if not program_info.acc_info.is_active():
+                    program_info.ego_vehicle.acc_info.toggle_acc()
+                    program_info.ego_vehicle.acc_info.target_velocity = program_info.ego_velocity
+                    if not program_info.ego_vehicle.acc_info.is_active():
                         control.throttle = 0.0
                         control.brake = 0.0
-                    program_info.send_info and server.send_data(f"ACC Toggled to {program_info.acc_info.is_active()}")
+                    program_info.send_info and server.send_data(f"ACC Toggled to {program_info.ego_vehicle.acc_info.is_active()}")
                 elif event.button == 10:
                     # TODO: mettere toggle distanza
-                    program_info.acc_info.change_distance_offset()
-                    program_info.send_info and server.send_data(f"Distance Changed to {program_info.acc_info.min_permitted_offset}")
+                    program_info.ego_vehicle.acc_info.change_distance_offset()
+                    program_info.send_info and server.send_data(f"Distance Changed to {program_info.ego_vehicle.acc_info.min_permitted_offset}")
                 elif event.button == 27: 
-                    program_info.acc_info.toggle_acc()
-                    program_info.acc_info.target_velocity = 90
-                    if not program_info.acc_info.is_active():
+                    program_info.ego_vehicle.acc_info.toggle_acc()
+                    program_info.ego_vehicle.acc_info.target_velocity = 90
+                    if not program_info.ego_vehicle.acc_info.is_active():
                         control.throttle = 0.0
                         control.brake = 0.0
-                    program_info.send_info and server.send_data(f"ACC Toggled to {program_info.acc_info.is_active()}")
+                    program_info.send_info and server.send_data(f"ACC Toggled to {program_info.ego_vehicle.acc_info.is_active()}")
                 elif event.button == 21:
-                    program_info.acc_info.increase_target_velocity()
-                    program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.acc_info.target_velocity}")
+                    program_info.ego_vehicle.acc_info.increase_target_velocity()
+                    program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.ego_vehicle.acc_info.target_velocity}")
                 elif event.button == 22:
-                    program_info.acc_info.decrease_target_velocity()
-                    program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.acc_info.target_velocity}")
+                    program_info.ego_vehicle.acc_info.decrease_target_velocity()
+                    program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.ego_vehicle.acc_info.target_velocity}")
 
             elif event.type == pygame.KEYDOWN:
                 if self._is_quit_shortcut(event.key):
@@ -179,8 +190,8 @@ class DualControl(object):
                     carla_utility.next_weather()
                     program_info.send_info and server.send_data("Weather Changed")
                 elif event.key == K_h:
-                    program_info.acc_info.change_distance_offset()
-                    program_info.send_info and server.send_data(f"Distance Changed to {program_info.acc_info.min_permitted_offset}")
+                    program_info.ego_vehicle.acc_info.change_distance_offset()
+                    program_info.send_info and server.send_data(f"Distance Changed to {program_info.ego_vehicle.acc_info.min_permitted_offset}")
                 if event.key == K_q:
                     control.gear = 1 if control.reverse else -1
                 elif event.key == K_m:
@@ -192,21 +203,30 @@ class DualControl(object):
                 elif control.manual_gear_shift and event.key == K_PERIOD:
                     control.gear = control.gear + 1
                 elif event.key == K_p or event.key == pygame.K_o:
-                    program_info.acc_info.toggle_acc()
+                    program_info.ego_vehicle.acc_info.toggle_acc()
                     if event.key == pygame.K_p:
-                        program_info.acc_info.target_velocity = 90
+                        program_info.ego_vehicle.acc_info.target_velocity = 90
                     else:
-                        program_info.acc_info.target_velocity = program_info.ego_velocity
-                    if not program_info.acc_info.is_active():
+                        program_info.ego_vehicle.acc_info.target_velocity = program_info.ego_velocity
+                    if not program_info.ego_vehicle.acc_info.is_active():
                         control.throttle = 0.0
                         control.brake = 0.0
-                    program_info.send_info and server.send_data(f"ACC Toggled to {program_info.acc_info.is_active()}")
+                    program_info.send_info and server.send_data(f"ACC Toggled to {program_info.ego_vehicle.acc_info.is_active()}")
                 elif event.key == pygame.K_PLUS:
-                    program_info.acc_info.increase_target_velocity()
-                    program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.acc_info.target_velocity}")
+                    program_info.ego_vehicle.acc_info.increase_target_velocity()
+                    program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.ego_vehicle.acc_info.target_velocity}")
                 elif event.key == pygame.K_MINUS:
-                    program_info.acc_info.decrease_target_velocity()  
-                    program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.acc_info.target_velocity}")          
+                    program_info.ego_vehicle.acc_info.decrease_target_velocity()  
+                    program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.ego_vehicle.acc_info.target_velocity}")
+                elif event.key == K_v:
+                    program_info.other_vehicle.acc_info.toggle_acc()
+                    if not program_info.other_vehicle.acc_info.is_active():
+                        control.throttle = 0.0
+                        control.brake = 0.0
+                elif event.key == K_b:
+                    program_info.other_vehicle.acc_info.increase_target_velocity()
+                elif event.key == K_n:
+                    program_info.other_vehicle.acc_info.decrease_target_velocity()
         
         
         self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time(), program_info)
@@ -226,7 +246,7 @@ class DualControl(object):
         if keys[K_s]:
             control.throttle = 0.0
             control.brake = 1.0
-            program_info.acc_info.set_active(False)
+            program_info.ego_vehicle.acc_info.set_active(False)
         control.hand_brake = keys[K_SPACE]
         steer_increment = 5e-4 * milliseconds
         if keys[K_a]:
@@ -296,7 +316,7 @@ class DualControl(object):
             
         program_info.ego_control.steer = steerCmd
         if jsInputs[self._brake_idx] != -1:
-            program_info.acc_info.set_active(False)
+            program_info.ego_vehicle.acc_info.set_active(False)
             program_info.ego_control.brake = brakeCmd
         if jsInputs[self._throttle_idx] != -1:
             program_info.ego_control.throttle = throttleCmd
