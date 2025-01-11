@@ -77,8 +77,8 @@ def setup_spectator(spawn_point: carla.Transform):
 def __spawn_actor(blueprint, spawn_point: carla.Transform, attach_to: carla.Actor = None):
     setup_spectator(carla.Transform(math_utility.add(spawn_point.location, attach_to.get_location() if attach_to != None else carla.Location())))
     actor = world.spawn_actor(blueprint, spawn_point, attach_to)
-    if isinstance(actor, carla.Vehicle):
-        actor.apply_control(carla.VehicleControl(brake=0.5))
+    #if isinstance(actor, carla.Vehicle):
+    #    actor.apply_control(carla.VehicleControl(brake=0.5))
     world.tick()
     return actor
 
@@ -216,7 +216,7 @@ def spawn_vehicle_in_front_of(vehicle: carla.Actor, vehicle_index=0, offset=0):
 def spawn_vehicle_bp_in_front_of(vehicle, vehicle_bp_name, offset=0):
     v3d = debug_utility.get_point_at(vehicle, vehicle.get_location(), offset)
     #+10 on z is to avoid spawn bug @TODO
-    return spawn_vehicle_bp_at(vehicle_bp_name,spawn_point=carla.Transform(carla.Location(v3d.x, v3d.y, v3d.z + 2), vehicle.get_transform().rotation))
+    return spawn_vehicle_bp_at(vehicle_bp_name,spawn_point=carla.Transform(carla.Location(v3d.x, v3d.y, v3d.z + 1), vehicle.get_transform().rotation))
 
 def spawn_vehicle_bp(vehicle, spawn_index=0, transform = carla.Transform()):
     blueprint_library = world.get_blueprint_library()

@@ -13,7 +13,7 @@ from env import env_cc, env_braking, env_braking2, env_braking3, env_following_b
 env = env_following_breaking.GymEnv() #could be wrapped with VecMonitor to make additional check on observation coerence but okay
 #env = Monitor(env)
 
-#check_env(env)
+check_env(env)
 
 n_steps = 1024
 n_epochs = 500
