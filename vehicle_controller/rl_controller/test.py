@@ -13,7 +13,7 @@ env.setup(ego_velocity=90, leader_velocity=70, min_distance_offset=14)
 # env = env_braking2()
 # obs = env.setup(ego_velocity = 90, leader_velocity = 70, min_distance_offset = 14)
 
-trainedModel = PPO.load("best_model", env=env)
+trainedModel = PPO.load("./vehicle_controller/rl_controller/model/env_following_braking/base_model/best_model", env=env)
 obs = trainedModel.get_env().reset()
 # trainedModel = PPO.load("working_braking_model", env=env)
 # trainedModel = PPO.load("working_braking2_model", env=env)

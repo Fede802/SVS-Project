@@ -16,20 +16,21 @@ env = env_following_breaking.GymEnv() #could be wrapped with VecMonitor to make 
 check_env(env)
 
 n_steps = 1024
-n_epochs = 500
+n_epochs = 100
 
-model = PPO(
-    "MlpPolicy",
-    env,
-    verbose=0,
-    gamma=0.95,
-    learning_rate=0.00003,
-    batch_size=128,
-    n_steps=n_steps,
-    n_epochs=n_epochs,
-    ent_coef=0.01,
-    seed=1234,
-    tensorboard_log="./log")
+# model = PPO(
+#     "MlpPolicy",
+#     env,
+#     verbose=0,
+#     gamma=0.95,
+#     learning_rate=0.00003,
+#     batch_size=128,
+#     n_steps=n_steps,
+#     n_epochs=n_epochs,
+#     ent_coef=0.01,
+#     seed=1234,
+#     tensorboard_log="./log")
+model = PPO.load("./vehicle_controller/rl_controller/model/env_following_braking/base_model/best_model", env=env)
 
 callback = EvalCallback(env, best_model_save_path='./',
                         log_path='./', eval_freq=n_steps * 50,
