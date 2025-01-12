@@ -88,7 +88,7 @@ class GymEnv(gym.Env):
     def step(self, action):
         action = [max(action, 0), abs(min(action, 0))]
         self.ego_vehicle.apply_control(carla.VehicleControl(throttle=float(action[0]), brake=float(action[1])))
-        #print(f"{action[0]}, {action[1]}")
+        print(f"{action[0]}, {action[1]}")
         
         self.leader_vehicle.set_target_velocity(debug_utility.get_velocity_vector(self.leader_velocity / 3.6, self.SPAWN_POINT.rotation))
         self.step_count += 1
@@ -100,7 +100,7 @@ class GymEnv(gym.Env):
         done = self._check_done(obs)
         info = {}
         #print(f"{self.leader_vehicle.get_velocity().length() * 3.6} km/h")
-        print(f"1/ttc: {obs[0]}, distances: {obs[1]}, security_distance: {obs[2]}, reward: {reward}")    
+        #print(f"1/ttc: {obs[0]}, distances: {obs[1]}, security_distance: {obs[2]}, reward: {reward}")    
         return obs, reward, done, truncated, info
     
     def _get_observation(self):
@@ -130,16 +130,16 @@ class GymEnv(gym.Env):
     def _check_done(self, observation):
         ttc, distance, security_distance = observation
 
-        if self.no_car_detected_counter >= 10:
-            print("No detection")
-            return True
+        # if self.no_car_detected_counter >= 10:
+        #     print("No detection")
+        #     return True
         
-        if distance < self.MIN_DISTANCE_SETTING[self.index_security_distance] / 3:
-            print("Collision")
-            return True
+        # if distance < self.MIN_DISTANCE_SETTING[self.index_security_distance] / 3:
+        #     print("Collision")
+        #     return True
         
-        if distance > security_distance + 30:
-            print("Out of range")
-            return True
+        # if distance > security_distance + 30:
+        #     print("Out of range")
+        #     return True
         
-        return False
+        return self.step_count >= 200
