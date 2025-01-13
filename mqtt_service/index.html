@@ -117,14 +117,14 @@
 
         // Funzione per mantenere solo gli ultimi 30 valori
         function keepLast30Values(chart, label, value) {
-            const maxLength = 100;
+            // const maxLength = 100;
             chart.data.labels.push(label);
             chart.data.datasets[0].data.push(value);
 
-            if (chart.data.labels.length > maxLength) {
-                chart.data.labels.shift();
-                chart.data.datasets[0].data.shift();
-            }
+            // if (chart.data.labels.length > maxLength) {
+            //     chart.data.labels.shift();
+            //     chart.data.datasets[0].data.shift();
+            // }
 
             chart.update();
         }
@@ -139,10 +139,19 @@
             logContainer.prepend(logEntry);
         }
 
+        
+
         // Connessione al broker MQTT
-        const brokerUrl = 'mqtt://broker.hivemq.com:1883';
+        const brokerUrl = 'ws://broker.hivemq.com:8000/mqtt';
         const topic = 'svsProject/status';
-        const client = mqtt.connect(brokerUrl);
+        const client = mqtt.connect(brokerUrl)
+        
+        // const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
+        //     protocolVersion: 5, // Ensure this matches the broker's MQTT version
+        //     clean: true,
+        //     reconnectPeriod: 1000,
+        //     clientId: 'mqttcarlajs_' + Math.random().toString(16).substr(2, 8),
+        // });
 
         client.on('connect', () => {
             console.log('Connesso al broker MQTT');

@@ -94,8 +94,8 @@ try:
         cb != None and cb()
         program_info.reset()
         if(time.time() - lastUpdate > update_frequency):  
-            # if send_info:
-            #     server.send_data({"velocity": ego_vehicle.vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.vehicle.get_acceleration().length()})
+            if send_info:
+                server.send_data({"velocity": ego_vehicle.vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.vehicle.get_acceleration().length()})
             if save_info:
                 logger.write(str(ego_vehicle.vehicle.get_velocity().length() * 3.6)+ "," + str(ego_vehicle.vehicle.get_acceleration().length())+ "," +str(program_info.ego_control.throttle)+ "," +str(program_info.ego_control.brake))
                 # Log brake and distance to obstacle
