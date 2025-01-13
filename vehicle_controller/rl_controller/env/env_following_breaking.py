@@ -142,4 +142,8 @@ class GymEnv(gym.Env):
             print("Out of range")
             return True
         
+        if self.step_count >= 1024:
+            print("Max step reached")
+            return True
+        
         return False
