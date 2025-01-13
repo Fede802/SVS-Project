@@ -15,14 +15,14 @@ client = mqtt.Client()
 class CustomHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/':
-            self.path = 'index.html'
+            self.path = 'mqtt_service/index.html'
         return http.server.SimpleHTTPRequestHandler.do_GET(self)
     
 # Funzione per avviare il server HTTP
 def start_http_server():
     handler = CustomHttpRequestHandler
-    with socketserver.TCPServer(("0.0.0.0", 8000), handler) as httpd:
-        print("Server HTTP avviato sulla porta 8000")
+    with socketserver.TCPServer(("0.0.0.0", 8080), handler) as httpd:
+        print("Server HTTP avviato sulla porta 8080")
         httpd.serve_forever()
     
 def start_servers():
