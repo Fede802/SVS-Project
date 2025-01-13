@@ -383,7 +383,7 @@ class CameraManager(object):
         print_text_to_screen(display, f"Steer: {program_info.ego_control.steer}", (10, 90), (255, 255, 255))
         print_text_to_screen(display, f"Reverse: {program_info.ego_control.reverse}", (10, 130), (255, 255, 255))
         print_text_to_screen(display, f"CC: {program_info.ego_vehicle.acc_info.is_active()}", (10, 170), (255, 255, 255))
-        print_text_to_screen(display, f"Distance Mode: {((program_info.ego_vehicle.acc_info.min_permitted_offset % 7)+1)}({program_info.ego_vehicle.acc_info.min_permitted_offset}", (10, 210), (255, 255, 255))
+        print_text_to_screen(display, f"Distance Mode: {((program_info.ego_vehicle.acc_info.min_permitted_offset % 7)+1)}({program_info.ego_vehicle.acc_info.min_permitted_offset})", (10, 210), (255, 255, 255))
         print_text_to_screen(display, f"Target Velocity: {program_info.ego_vehicle.acc_info.target_velocity}", (10, 250), (255, 255, 255))
         print_text_to_screen(display, f"Ego Velocity: {program_info.ego_velocity}", (10, 290), (255, 255, 255))
         other_vehicle_velocity = program_info.ego_velocity + program_info.obstacle_relative_velocity
