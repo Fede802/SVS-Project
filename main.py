@@ -9,7 +9,7 @@ from vehicle_controller.rl_controller import rl_controller
 from control_utility import ProgramInfo, DualControl, ACCInfo
 from carla_utility import CameraManager, VehicleWithRadar, CollisionSensor, FadingText
 
-send_info = True
+send_info = False
 save_info = True
 show_log = True
 show_in_carla = False
@@ -57,24 +57,25 @@ def restart(mode = 1):
             other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(500)[0].transform
             other_vehicle_spawn_point.location.z += 2
             other_vehicle_acc_info = ACCInfo(True, min_permitted_offset=min_distance_offset, target_velocity=110)
-            other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=other_vehicle_spawn_point), other_vehicle_acc_info)
+            # other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=other_vehicle_spawn_point), other_vehicle_acc_info)
     camera_manager = CameraManager(display, ego_vehicle.vehicle)
     # little text in the center of the screen
     fading_text = FadingText(pygame.font.Font(pygame.font.get_default_font(), 24))
     program_info = ProgramInfo(ego_vehicle, other_vehicle, send_info=send_info)
     collision_sensor = CollisionSensor(ego_vehicle.vehicle, fading_text, program_info)
     carla_utility.move_spectator_to(ego_vehicle.vehicle.get_transform())
-
+    # time.sleep(2)
+# 
 if send_info:
     server.start_servers()
     server.send_data("Program Start")
-
+spawn_time = 0
 pygame.init()
 pygame.font.init()
 display = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
 
 clock = pygame.time.Clock()
-controller = DualControl(restart_callback=restart)
+controller = DualControl(restart_callback=restart, target_velocity=target_velocity)
 logger = Logger()
 lastUpdate = 0
 
@@ -88,12 +89,13 @@ lastUpdate = 0
 ego_controller = pid_controller_scheduled_following_brake_ttc.PIDController(update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = rl_controller.RLController()
 restart()
-
 try:
     while program_info.running:
         cb != None and cb()
         program_info.reset()
-        if(time.time() - lastUpdate > update_frequency):  
+        if(time.time() - lastUpdate > update_frequency): 
+            if spawn_time < 50:
+                spawn_time += 1 
             if send_info:
                 server.send_data({"velocity": ego_vehicle.vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.vehicle.get_acceleration().length()})
             if save_info:
@@ -104,9 +106,9 @@ try:
         clock.tick_busy_loop(120)
         if controller.parse_events(camera_manager, program_info, clock):
             break
-
-        ego_vehicle.apply_control()
-        other_vehicle != None and other_vehicle.apply_control()
+        if spawn_time >= 50:
+            ego_vehicle.apply_control()
+            other_vehicle != None and other_vehicle.apply_control()
         camera_manager.render(display, program_info)
         fading_text.tick(ego_vehicle.vehicle.get_world(), clock=clock)
         fading_text.render(display)

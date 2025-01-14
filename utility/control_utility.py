@@ -95,11 +95,12 @@ class ProgramInfo:
         return f"ego_control: {self.ego_control}, other_vehicle_control: {self.other_vehicle_control}, cc: {self.accInfo.is_active()}, running: {self.running}"
 
 class DualControl(object):
-    def __init__(self, restart_callback):
+    def __init__(self, restart_callback, target_velocity = 90):
         self._restart_callback = restart_callback
         self._ego_steer_cache = 0.0
         self._other_steer_cache = 0.0
         self._reverse_cache = False
+        self._target_velocity = target_velocity
        
         # initialize steering wheel
         pygame.joystick.init()
@@ -158,7 +159,7 @@ class DualControl(object):
                     program_info.send_info and server.send_data(f"Distance Changed to {program_info.ego_vehicle.acc_info.min_permitted_offset}")
                 elif event.button == 27: 
                     program_info.ego_vehicle.acc_info.toggle_acc()
-                    program_info.ego_vehicle.acc_info.target_velocity = 90
+                    program_info.ego_vehicle.acc_info.target_velocity = self._target_velocity
                     if not program_info.ego_vehicle.acc_info.is_active():
                         control.throttle = 0.0
                         control.brake = 0.0
@@ -205,7 +206,7 @@ class DualControl(object):
                 elif event.key == K_p or event.key == pygame.K_o:
                     program_info.ego_vehicle.acc_info.toggle_acc()
                     if event.key == pygame.K_p:
-                        program_info.ego_vehicle.acc_info.target_velocity = 90
+                        program_info.ego_vehicle.acc_info.target_velocity = self._target_velocity
                     else:
                         program_info.ego_vehicle.acc_info.target_velocity = program_info.ego_velocity
                     if not program_info.ego_vehicle.acc_info.is_active():

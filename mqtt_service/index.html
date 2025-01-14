@@ -160,12 +160,16 @@
 
         client.on('message', (topic, message) => {
             const data = JSON.parse(message.toString());
-
-            if (data.acceleration && data.velocity) {
-                const currentTime = new Date().toLocaleTimeString();
-                keepLast30Values(accelerationChart, currentTime, data.acceleration);
-                keepLast30Values(velocityChart, currentTime, data.velocity);
-            } else {
+            console.log('Messaggio ricevuto:', data);
+            console.log('Acceleration:', data['acceleration']);
+            console.log('Velocity:', data['velocity']);
+            console.log('Acceeleration2:', data.acceleration);
+            console.log('Velocity2:', data.velocity);
+            // Se il messaggio contiene i dati di accelerazione e velocità, aggiorna i grafici
+            if (data.acceleration != null && data.velocity != null) {
+                keepLast30Values(accelerationChart, data['time'], data['acceleration']);
+                keepLast30Values(velocityChart, data['time'], data['velocity']);}
+             else {
                 addLogMessage(message.toString());
             }
         });
