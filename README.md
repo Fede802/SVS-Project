@@ -38,6 +38,31 @@ solo velocita adaptive buffer
 velocità + following down + following up + frenata
 da controllare i range di switch following, braking e reset se ha senso fare il reset dei buffer
 
+gli switch di cruise avvengono sempre in ordine
+caso 1 no following no braking: se sto facendo following si attiva se sono sopra a 50 + distanza di sicurezza
+caso 2 following no braking: se non sto facendo following si attiva se sono sotto a 10 + distanza di sicurezza, se sto frenando si attiva ???
+caso 3 no following braking se non sto frenando si attiva???
+caso 4 stop
+
+## LOG
+1: pid_controller_scheduled_following_brake_ttc: ego_target 110, solo caso 1, buffer 42
+2: pid_controller_random_following_brake_ttc: ego_target 110, solo caso 1, buffer 42
+3: pid_controller_scheduled_following_brake_ttc: ego_target 110, solo caso 1, buffer 1
+4: pid_controller_scheduled_following_brake_ttc: ego_target 110, solo caso 1, buffer None 
+5: pid_controller_scheduled_following_brake_ttc: ego_target 90, other_target 70, other tra 800 e 1000 frena a 1
+6: rl_controller_working_braking_model: ego_target 90, other_target 70, other tra 800 e 1000 frena a 1
+7: pid_controller_scheduled_following_brake_ttc: ego_target 90, other_target 70, other tra 800 e 1000 frena a 1, ranges following 50 e 10, ranges braking 20 e 0
+8: rl_controller_working_braking_model: ego_target 110, solo caso 1
+9: rl_controller_working_braking_model: ego_target 90, other_target 70, other tra 800 e 1000 frena a 1, ranges braking 20 e 0
+
+## Grafici
+ComparisonLog1e2: paragone pid scheduled e random
+ComparisonLog1e3e4: paragone diverse buffer size
+Comparison Log1e8: paragone pid scheduled e rl
+ComparisonLog5e7: scenario complesso paragone pid scheduled e pid scheduled switching
+ComparisonLog6e9: scenario complesso paragone rl e rl switching
+ComparisonLog5e6: scenario complesso paragone pid scheduled e rl
+ComparisonLog7e9: scenario complesso paragone pid scheduled switching e rl switching
 
 ## TODO
 - [ ] Multi-radar

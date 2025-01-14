@@ -50,30 +50,26 @@ class PIDController:
                 self.last_brake = 0
                 if self.following and distance_error > 50:
                     self.following = False
-                elif not self.following and distance_error < 5:
+                elif not self.following and distance_error < 10:
                     self.following = True 
 
-                # if self.braking and distance_error > 20:
-                #     self.braking = False
-                # elif not self.braking and distance_error < 0:
-                #     self.braking = True        
+                if self.braking and distance_error > 20:
+                    self.braking = False
+                elif not self.braking and distance_error < 0:
+                    self.braking = True        
 
-                # if self.following and distance_error >= 5:
-                #     self.following = False
-                # elif not self.following and distance_error < 5:
-                #     self.following = True    
-       
-
+              
                 if not self.following:
+                # if distance_error > 10:
                     control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(vehicle.acc_info.target_velocity, vehicle.vehicle.get_velocity().length() * 3.6))
                     # self.pid_distance.resetBuffer()
                     print("1")
-                elif self.following and distance_error > 0:
+                elif not self.braking and self.following:
                     ego_velocity = vehicle.vehicle.get_velocity().length() * 3.6
                     relative_velocity = vehicle.relative_velocity * 3.6
                     print("2", relative_velocity)
                     control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(ego_velocity + relative_velocity, ego_velocity))   
-                elif vehicle.min_depth > vehicle.acc_info.min_permitted_offset:
+                elif self.braking and vehicle.min_depth > vehicle.acc_info.min_permitted_offset:
                     brake = self.pid_distance.compute_control(0, 1/vehicle.min_ttc)
                     control = carla.VehicleControl(brake = brake)
                     print("3")

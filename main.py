@@ -16,7 +16,7 @@ show_in_carla = False
 cc = True
 update_frequency = 0.01 #seconds
 
-target_velocity = 110
+target_velocity = 90
 min_distance_offset = 7
 learning_rate = 0.003
 
@@ -54,10 +54,10 @@ def restart(mode = 1):
         if mode == 2:
             cb = carla_utility.spawn_traffic(8)
         else:
-            other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(500)[0].transform
+            other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(130)[0].transform
             other_vehicle_spawn_point.location.z += 2
-            other_vehicle_acc_info = ACCInfo(True, min_permitted_offset=min_distance_offset, target_velocity=110)
-            # other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=other_vehicle_spawn_point), other_vehicle_acc_info)
+            other_vehicle_acc_info = ACCInfo(True, min_permitted_offset=min_distance_offset, target_velocity=70)
+            other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=other_vehicle_spawn_point), other_vehicle_acc_info)
     camera_manager = CameraManager(display, ego_vehicle.vehicle)
     # little text in the center of the screen
     fading_text = FadingText(pygame.font.Font(pygame.font.get_default_font(), 24))
@@ -86,16 +86,16 @@ lastUpdate = 0
 # ego_controller = pid_controller_scheduled_following.PIDController(update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled_following_brake.PIDController(update_frequency) #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_random_following_brake_ttc.PIDController() #add buffer_size = None to disable buffer
-ego_controller = pid_controller_scheduled_following_brake_ttc.PIDController(update_frequency) #add buffer_size = None to disable buffer
-# ego_controller = rl_controller.RLController()
+# ego_controller = pid_controller_scheduled_following_brake_ttc.PIDController(update_frequency) #add buffer_size = None to disable buffer
+ego_controller = rl_controller.RLController()
 restart()
 try:
     while program_info.running:
         cb != None and cb()
         program_info.reset()
         if(time.time() - lastUpdate > update_frequency): 
-            if spawn_time < 50:
-                spawn_time += 1 
+            
+            spawn_time += 1 
             if send_info:
                 server.send_data({"velocity": ego_vehicle.vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.vehicle.get_acceleration().length()})
             if save_info:
@@ -108,6 +108,9 @@ try:
             break
         if spawn_time >= 50:
             ego_vehicle.apply_control()
+            print(spawn_time)
+            if 800 < spawn_time < 1000:
+                other_vehicle.vehicle_control = carla.VehicleControl(brake=1)
             other_vehicle != None and other_vehicle.apply_control()
         camera_manager.render(display, program_info)
         fading_text.tick(ego_vehicle.vehicle.get_world(), clock=clock)
