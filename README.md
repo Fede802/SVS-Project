@@ -54,18 +54,21 @@ caso 4 stop
 7: pid_controller_scheduled_following_brake_ttc: ego_target 90, other_target 70, other tra 800 e 1000 frena a 1, ranges following 50 e 10, ranges braking 20 e 0
 8: rl_controller_working_braking_model: ego_target 110, solo caso 1
 9: rl_controller_working_braking_model: ego_target 90, other_target 70, other tra 800 e 1000 frena a 1, ranges braking 20 e 0
+10: rl_controller_working_braking_model: ego_target 90, other_target 70, other tra 800 e 1000 frena a 1, ranges braking 50 e 10
 
 ## Grafici
 ComparisonLog1e2: paragone pid scheduled e random
 ComparisonLog1e3e4: paragone diverse buffer size
 Comparison Log1e8: paragone pid scheduled e rl
 ComparisonLog5e7: scenario complesso paragone pid scheduled e pid scheduled switching
-ComparisonLog6e9: scenario complesso paragone rl e rl switching
+ComparisonLog6e10: scenario complesso paragone rl e rl switching
 ComparisonLog5e6: scenario complesso paragone pid scheduled e rl
-ComparisonLog7e9: scenario complesso paragone pid scheduled switching e rl switching
+ComparisonLog7e10: scenario complesso paragone pid scheduled switching e rl switching
 
 ## TODO
 - [ ] Multi-radar
+- [ ] Check radar range
+- [ ] Fix web plot
 - [ ] MQTT: interfaccia e fix vari
 - [X] Scenario 1: aggiungere CC e scritte per target vehicle
 - [X] Valutare world sync vs async

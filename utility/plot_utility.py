@@ -96,5 +96,5 @@ def custom_plot(*plot_files, names, log_dir = "logs"):
 drop = 50
 if __name__ == "__main__":
     random.seed(14)
-    custom_plot("log_7.txt","log_9.txt", names=["Switching Scheduled", "Switching RL"])    
+    custom_plot("log_7.txt","log_10.txt", names=["Switching Scheduled", "Switching RL"])    
     # custom_plot("log_1.txt", "log_26.txt", "log_27.txt", "log_28.txt", names=["Random-Adaptive", "Random", "Scheduled-Adaptive", "Scheduled"])    

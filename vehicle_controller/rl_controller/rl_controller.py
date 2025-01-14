@@ -15,9 +15,9 @@ class RLController:
             
             min_permitted_distance = carla_utility.compute_security_distance(vehicle.vehicle.get_velocity().length() * 3.6) + vehicle.acc_info.min_permitted_offset + 7
             distance_error = vehicle.min_depth - min_permitted_distance
-            if self.braking and distance_error > 20:
+            if self.braking and distance_error > 50:
                 self.braking = False
-            elif not self.braking and distance_error < 0:
+            elif not self.braking and distance_error < 10:
                 self.braking = True    
 
             if not self.braking > 0:
