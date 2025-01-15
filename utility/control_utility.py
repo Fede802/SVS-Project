@@ -125,7 +125,7 @@ class DualControl(object):
                 return True
             elif event.type == pygame.JOYBUTTONDOWN:
                 if event.button == 1: #X
-                    self._restart_callback(1)
+                    self._restart_callback(1) 
                 elif event.button == 3: #Y
                     self._restart_callback(2)
                 elif event.button == 0: #A
@@ -152,7 +152,7 @@ class DualControl(object):
                     if not program_info.ego_vehicle.acc_info.is_active():
                         control.throttle = 0.0
                         control.brake = 0.0
-                    program_info.send_info and server.send_data(f"ACC Toggled to {program_info.ego_vehicle.acc_info.is_active()}")
+                    program_info.send_info and server.send_data(f"ACC with target velocity {program_info.ego_vehicle.acc_info.target_velocity} toggled to {program_info.ego_vehicle.acc_info.is_active()}")
                 elif event.button == 10:
                     # TODO: mettere toggle distanza
                     program_info.ego_vehicle.acc_info.change_distance_offset()
@@ -163,7 +163,7 @@ class DualControl(object):
                     if not program_info.ego_vehicle.acc_info.is_active():
                         control.throttle = 0.0
                         control.brake = 0.0
-                    program_info.send_info and server.send_data(f"ACC Toggled to {program_info.ego_vehicle.acc_info.is_active()}")
+                    program_info.send_info and server.send_data(f"ACC with target velocity {program_info.ego_vehicle.acc_info.target_velocity} toggled to {program_info.ego_vehicle.acc_info.is_active()}")
                 elif event.button == 21:
                     program_info.ego_vehicle.acc_info.increase_target_velocity()
                     program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.ego_vehicle.acc_info.target_velocity}")
@@ -212,7 +212,7 @@ class DualControl(object):
                     if not program_info.ego_vehicle.acc_info.is_active():
                         control.throttle = 0.0
                         control.brake = 0.0
-                    program_info.send_info and server.send_data(f"ACC Toggled to {program_info.ego_vehicle.acc_info.is_active()}")
+                    program_info.send_info and server.send_data(f"ACC with target velocity {program_info.ego_vehicle.acc_info.target_velocity} toggled to {program_info.ego_vehicle.acc_info.is_active()}")
                 elif event.key == pygame.K_PLUS:
                     program_info.ego_vehicle.acc_info.increase_target_velocity()
                     program_info.send_info and server.send_data(f"Target Velocity Changed to {program_info.ego_vehicle.acc_info.target_velocity}")

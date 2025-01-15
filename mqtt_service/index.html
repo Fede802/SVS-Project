@@ -115,19 +115,29 @@
             }
         });
 
-        // Funzione per mantenere solo gli ultimi 30 valori
-        function keepLast30Values(chart, label, value) {
-            // const maxLength = 100;
+        let lastUpdateTime = Date.now();
+
+        function keepLast50Values(chart, label, value) {
+            const maxLength = 50;
+
+            // Aggiungi nuovi dati
             chart.data.labels.push(label);
             chart.data.datasets[0].data.push(value);
 
-            // if (chart.data.labels.length > maxLength) {
-            //     chart.data.labels.shift();
-            //     chart.data.datasets[0].data.shift();
-            // }
+            // Limita i dati ai primi 30
+            if (chart.data.labels.length > maxLength) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
 
-            chart.update();
+            // Forza l'aggiornamento immediato senza animazione
+            chart.update('none');
+            chart.render(); // Rende il grafico immediatamente visibile
         }
+
+
+
+
 
         // Funzione per aggiungere messaggi al log
         function addLogMessage(message) {
@@ -159,20 +169,36 @@
         });
 
         client.on('message', (topic, message) => {
-            const data = JSON.parse(message.toString());
-            console.log('Messaggio ricevuto:', data);
-            console.log('Acceleration:', data['acceleration']);
-            console.log('Velocity:', data['velocity']);
-            console.log('Acceeleration2:', data.acceleration);
-            console.log('Velocity2:', data.velocity);
-            // Se il messaggio contiene i dati di accelerazione e velocità, aggiorna i grafici
-            if (data.acceleration != null && data.velocity != null) {
-                keepLast30Values(accelerationChart, data['time'], data['acceleration']);
-                keepLast30Values(velocityChart, data['time'], data['velocity']);}
-             else {
-                addLogMessage(message.toString());
+            try {
+                // Tenta di parsare il messaggio come JSON
+                const data = JSON.parse(message.toString());
+                console.log('Messaggio ricevuto:', data);
+
+                // Verifica se il messaggio contiene "velocity" e "acceleration"
+                if (data.hasOwnProperty('velocity') && data.hasOwnProperty('acceleration')) {
+                    const acceleration = parseFloat(data.acceleration);
+                    const velocity = parseFloat(data.velocity);
+                    const time = data.time || new Date().toLocaleTimeString(); // Usa un timestamp se non specificato
+
+                    // Aggiungi i dati ai grafici solo se sono validi
+                    if (!isNaN(acceleration) && !isNaN(velocity)) {
+                        keepLast50Values(accelerationChart, time, acceleration);
+                        keepLast50Values(velocityChart, time, velocity);
+                    } else {
+                        console.warn('Valori non numerici ricevuti:', data);
+                    }
+                } else {
+                    // Messaggi senza "velocity" o "acceleration" vengono loggati
+                    addLogMessage(message.toString());
+                }
+            } catch (error) {
+                // Logga l'errore di parsing
+                console.error('Errore nel parsing del messaggio:', error);
+                addLogMessage(`Errore nel parsing: ${message.toString()}`);
             }
         });
+
+
 
         client.on('error', (error) => {
             console.error('Errore MQTT:', error);

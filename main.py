@@ -9,7 +9,7 @@ from vehicle_controller.rl_controller import rl_controller
 from control_utility import ProgramInfo, DualControl, ACCInfo
 from carla_utility import CameraManager, VehicleWithRadar, CollisionSensor, FadingText
 
-send_info = False
+send_info = True
 save_info = True
 show_log = True
 show_in_carla = False
@@ -30,7 +30,7 @@ current_map = 0
 # mode 3 = town10 traffic
 def restart(mode = 1):
     global ego_vehicle, other_vehicle, camera_manager, program_info, display, collision_sensor, fading_text, cb, traffic_thread, stop_event, current_map
-    
+    send_info and server.send_data("Program Restart")
     if traffic_thread != None:
         stop_event.set()
         carla_utility.world.tick()
@@ -68,7 +68,6 @@ def restart(mode = 1):
 # 
 if send_info:
     server.start_servers()
-    server.send_data("Program Start")
 spawn_time = 0
 pygame.init()
 pygame.font.init()
