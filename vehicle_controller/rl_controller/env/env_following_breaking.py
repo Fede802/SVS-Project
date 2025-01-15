@@ -63,7 +63,7 @@ class GymEnv(gym.Env):
         print("---RESET---")
         seed is not None and rnd.seed(seed)
         random_ego_velocity = rnd.randint(self.MIN_VEHICLE_VELOCITY, self.MAX_VEHICLE_VELOCITY)
-        random_leader_velocity = rnd.randint(0, random_ego_velocity)
+        random_leader_velocity = 0 #rnd.randint(0, random_ego_velocity)
         print(f"Ego: {random_ego_velocity} km/h, Leader: {random_leader_velocity} km/h")
         self.min_distance_offset = self.MIN_DISTANCE_SETTING[self.index_security_distance]#self.MIN_DISTANCE_SETTING[rnd.randrange(len(self.MIN_DISTANCE_SETTING))]
         self.__increment_index_security_distance()
@@ -102,7 +102,8 @@ class GymEnv(gym.Env):
         done = self._check_done(obs)
         info = {}
         #print(f"{self.leader_vehicle.get_velocity().length() * 3.6} km/h")
-        print(f"Distance: {obs[0]} m, Security Distance: {obs[1]} m, Min_Security_Distance: {obs[2]} m, Relative_Speed: {obs[3] * 3.6} km/h, Ego_Velocity: {obs[4] * 3.6} km/h, Absolute_Speed: {obs[5] * 3.6}, reward: {reward}")    
+        print(f"Distance: {obs[0]} m, Security Distance: {obs[1]} m, Min_Security_Distance: {obs[2]} m, Relative_Speed: {obs[3] * 3.6} km/h, Ego_Velocity: {obs[4] * 3.6} km/h, Absolute_Speed: {obs[5] * 3.6}, reward: {reward}")
+        #print(f"Ego_Velocity: {obs[4] * 3.6} km/h, Absolute_Speed: {obs[5] * 3.6}, reward: {reward}")  
         return obs, reward, done, truncated, info
     
     def _get_observation(self):
@@ -114,29 +115,37 @@ class GymEnv(gym.Env):
         ego_velocity = self.ego_vehicle.get_velocity().length() #In m/s
         absolute_speed = ego_velocity + relative_speed #In m/s
         self.no_car_detected_counter += 1 if self.radar_data["distance"] == self.RADAR_RANGE else 0
-        return np.array([distance, security_distance, min_security_distance, relative_speed, ego_velocity, absolute_speed], dtype=np.float32)
+        return np.array([distance, security_distance, min_security_distance, relative_speed, ego_velocity, abs(absolute_speed)], dtype=np.float32)
 
     def _compute_reward(self, observation):
-        #TODO: Check reward function
         distance, security_distance, min_security_distance, _, ego_velocity, absolute_speed = observation
-        tolerance = 0.2
+        distance = int(distance)
+        security_distance = int(security_distance)
+        ego_velocity = int(ego_velocity)
+        tolerance = 1
         distance_penalty = 0
         speed_penalty = 0
         isObjectDetected = not distance >= self.RADAR_RANGE
-        isEgoAdaptVelocity = absolute_speed - tolerance <= ego_velocity <= absolute_speed + tolerance
         isEgoInSecurityDistanceRange = security_distance - tolerance <= distance <= security_distance + tolerance
         isEgoTooClose = distance < security_distance - tolerance and not (distance < self.MIN_DISTANCE_SETTING[0])
         isEgoInCollision = distance < self.MIN_DISTANCE_SETTING[0]
+        isEgoStopped = ego_velocity < 1.0
 
         if isObjectDetected:
             #Distance penalty
-            if distance > security_distance: distance_penalty -= abs(security_distance - distance) / distance
+            if distance > security_distance:
+                if isEgoStopped:
+                    distance_penalty -= 20.0
+                    speed_penalty = 0
+                else:
+                    distance_penalty -= abs(security_distance - distance) / distance
+                    speed_penalty = 0
             elif isEgoInSecurityDistanceRange: 
                 distance_penalty += 10 - abs(security_distance - distance)
-                speed_penalty -= abs(ego_velocity - absolute_speed) / max(absolute_speed, 0.1)
+                speed_penalty = 0#speed_penalty -= abs(ego_velocity - absolute_speed) / max(absolute_speed, 0.1)
             elif isEgoTooClose: 
                 distance_penalty -= abs(security_distance - distance) / security_distance
-                speed_penalty -= abs(ego_velocity - absolute_speed) / max(absolute_speed, 0.1)
+                speed_penalty = 0 #abs(ego_velocity - absolute_speed) / max(absolute_speed, 0.1)
             elif isEgoInCollision: 
                 distance_penalty -= 20.0
                 speed_penalty = 0
@@ -145,7 +154,7 @@ class GymEnv(gym.Env):
             speed_penalty = 0
  
 
-        return distance_penalty + speed_penalty
+        return max(distance_penalty + speed_penalty, -20)
             
             
     def _check_done(self, observation):
