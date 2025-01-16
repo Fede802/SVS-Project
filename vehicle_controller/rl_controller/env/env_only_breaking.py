@@ -20,7 +20,6 @@ class GymEnv(gym.Env):
         self.observation_space = self.__observation_space()
         self.index_security_distance = -1
         self.no_car_detected_counter = 0
-        self.is_env_for_following = False
     
     def __increment_index_security_distance(self):
         if self.index_security_distance >= self.MIN_DISTANCE_SETTING.index(max(self.MIN_DISTANCE_SETTING)):
@@ -33,12 +32,12 @@ class GymEnv(gym.Env):
         return spaces.Box(low=-1.0, high=1.0, dtype=np.float32)
     
     def __observation_space(self):
-        # [nearest_obstacle_distance, security_distance, min_security_distance, relative_speed, ego_speed, absolute_speed] in meters
+        # [nearest_obstacle_distance, security_distance, min_security_distance, relative_speed, ego_speed, brake_intensity] in meters
         return spaces.Box(low=np.array([0.0, 0.0, self.MIN_DISTANCE_SETTING[0], -self.MAX_VEHICLE_VELOCITY / 3.6, 0., 0.0]), 
-                          high=np.array([self.RADAR_RANGE, carla_utility.compute_security_distance(self.MAX_VEHICLE_VELOCITY) + self.MIN_DISTANCE_SETTING[-1], self.MIN_DISTANCE_SETTING[-1], self.MAX_VEHICLE_VELOCITY / 3.6, self.MAX_VEHICLE_VELOCITY / 3.6, self.MAX_VEHICLE_VELOCITY / 3.6]), dtype=np.float32)
+                          high=np.array([self.RADAR_RANGE, carla_utility.compute_security_distance(self.MAX_VEHICLE_VELOCITY) + self.MIN_DISTANCE_SETTING[-1], self.MIN_DISTANCE_SETTING[-1], self.MAX_VEHICLE_VELOCITY / 3.6, self.MAX_VEHICLE_VELOCITY / 3.6, 1.0]), dtype=np.float32)
     
     def __spawn_vehicles(self, ego_velocity):
-        other_vehicle_offset = carla_utility.compute_security_distance(ego_velocity) + self.MIN_DISTANCE_SETTING[self.index_security_distance] + 10
+        other_vehicle_offset = carla_utility.compute_security_distance(ego_velocity) + self.MIN_DISTANCE_SETTING[self.index_security_distance] + rnd.randint(0, 10)
         self.ego_vehicle = carla_utility.spawn_vehicle_bp_at('vehicle.tesla.cybertruck', spawn_point=self.SPAWN_POINT)
         self.leader_vehicle = carla_utility.spawn_vehicle_bp_in_front_of(self.ego_vehicle, vehicle_bp_name='vehicle.tesla.cybertruck', offset=other_vehicle_offset)
 
@@ -64,9 +63,8 @@ class GymEnv(gym.Env):
     def reset(self, seed = None):
         print("---RESET---")
         seed is not None and rnd.seed(seed)
-        self.is_env_for_following = not self.is_env_for_following
         random_ego_velocity = rnd.randint(self.MIN_VEHICLE_VELOCITY, self.MAX_VEHICLE_VELOCITY)
-        random_leader_velocity = rnd.randint(2, random_ego_velocity) if self.is_env_for_following else 0
+        random_leader_velocity = 0
         print(f"Ego: {random_ego_velocity} km/h, Leader: {random_leader_velocity} km/h")
         self.min_distance_offset = self.MIN_DISTANCE_SETTING[self.index_security_distance]
         self.__increment_index_security_distance()
@@ -99,71 +97,66 @@ class GymEnv(gym.Env):
         self.step_count += 1
         carla_utility.world.tick()
         
-        obs = self._get_observation()  
+        obs = self._get_observation(float(action[0]))  
         reward = self._compute_reward(obs)
         truncated = False
         done = self._check_done(obs)
         info = {}
-        #print(f"{self.leader_vehicle.get_velocity().length() * 3.6} km/h")
-        print(f"Distance: {int(obs[0])} m, Security Distance: {int(obs[1])} m, Min_Security_Distance: {int(obs[2])} m, Relative_Speed: {int(obs[3] * 3.6)} km/h, Ego_Velocity: {int(obs[4] * 3.6)} km/h, Absolute_Speed: {int(obs[5])} km/h, reward: {reward}")
-        #print(f"Ego_Velocity: {obs[4] * 3.6} km/h, Absolute_Speed: {obs[5] * 3.6}, reward: {reward}")  
+        print(f"Distance: {int(obs[0])} m, Security Distance: {int(obs[1])} m, Min_Security_Distance: {int(obs[2])} m, Relative_Speed: {int(obs[3] * 3.6)} km/h, Ego_Velocity: {int(obs[4] * 3.6)} km/h, Brake_Intensity: {int(obs[5])} km/h, reward: {reward}")
         return obs, reward, done, truncated, info
     
-    def _get_observation(self):
+    def _get_observation(self, brake_intensity):
         current_velocity = self.ego_vehicle.get_velocity().length() * 3.6
         security_distance = carla_utility.compute_security_distance(current_velocity) + self.MIN_DISTANCE_SETTING[self.index_security_distance]
         min_security_distance = self.MIN_DISTANCE_SETTING[self.index_security_distance]
         distance = self.radar_data["distance"]
         relative_speed = self.radar_data["relative_speed"]
         ego_velocity = self.ego_vehicle.get_velocity().length() #In m/s
-        absolute_speed = ego_velocity + relative_speed #In m/s
         self.no_car_detected_counter += 1 if self.radar_data["distance"] == self.RADAR_RANGE else 0
-        return np.array([distance, security_distance, min_security_distance, relative_speed, ego_velocity, abs(absolute_speed)], dtype=np.float32)
+        return np.array([distance, security_distance, min_security_distance, relative_speed, ego_velocity, brake_intensity], dtype=np.float32)
 
     def _compute_reward(self, observation):
-
-
-        #Observation
-        distance, security_distance, min_security_distance, relative_speed, ego_speed, absolute_speed = observation
-
-        #Error
-        distance_error = abs(security_distance - distance)
-        min_security_distance_error = abs(distance - min_security_distance) / min_security_distance
-        speed_error = abs(ego_speed - absolute_speed)
-
-        #Conditions
-        tolerance = 0.1 #1% error
-        isObjectDetected = not distance >= self.RADAR_RANGE
-        isEgoTooLong = distance > security_distance
-        isEgoStop = ego_speed < 1.0
-        isEgoInSecurityDistanceRange = security_distance - tolerance <= distance <= security_distance + tolerance
-        isEgoTooClose = distance < security_distance - tolerance and not distance < min_security_distance
-
+        
         #Reward
         reward = 0
 
+        #Observation
+        distance, security_distance, min_security_distance, relative_speed, ego_speed, brake_intensity = observation
+        distance = int(distance)
+        security_distance = int(security_distance)
+        min_security_distance = int(min_security_distance)
+
+        #Check
+        isObjectDetected = distance < self.RADAR_RANGE
+        isEgoStopped = ego_speed < 1
+        isEgoInCollision = distance < self.MIN_DISTANCE_SETTING[0]
+        isEgoTooLong = distance > security_distance
+        isEgoInSecurityDistance = security_distance - 1 <= distance <= security_distance + 1
+        isEgoTooClose = min_security_distance <= distance <= security_distance - 1
+        isEgoClose = self.MIN_DISTANCE_SETTING[0] <= distance < min_security_distance
+        isBrakeIntensityStrong = brake_intensity > 0.8
+
         if isObjectDetected:
-            #1 Case: Distance > Security Distance
             if isEgoTooLong:
-                if isEgoStop:
+                if isEgoStopped:
                     reward -= 20
                 else:
-                    reward -= (distance_error / distance) + speed_error * 0.1 #TODO: Cancel speed error
-            #2 Case: Security_Distance - Tolerance <= Distance <= Security_Distance + Tolerance
-            elif isEgoInSecurityDistanceRange:
-                reward += 10 - (speed_error * 0.5)
-            #3 Case: Distance < Security_Distance and not Distance < Min_Security_Distance
-            elif isEgoTooClose:
-                reward -= (distance_error / security_distance) + speed_error * 0.1
-            #4 Case: Distance < Min_Security_Distance
-            else:
-                if distance < self.MIN_DISTANCE_SETTING[0] - 4:
-                    reward -= 10
+                    reward -= (abs(distance / security_distance) / distance) ** 2
+            elif isEgoInSecurityDistance:
+                if isBrakeIntensityStrong:
+                    reward += 10 - ((distance / security_distance) / security_distance) - abs(0.8 - brake_intensity)
                 else:
-                    reward -= 2 + min_security_distance_error #TODO: Check Distance: 13 m, Security Distance: 14 m, Min_Security_Distance: 14 m, Relative_Speed: 0 km/h, Ego_Velocity: 0 km/h, Absolute_Speed: 0 km/h, reward: -2.0466935969889164
-                    #Distance: 23 m, Security Distance: 23 m, Min_Security_Distance: 7 m, Relative_Speed: -4 km/h, Ego_Velocity: 40 km/h, Absolute_Speed: 9 km/h, reward: 9.369238376617432
+                    reward += 10 - ((distance / security_distance) / security_distance)  
+            elif isEgoTooClose:
+                    reward -= ((distance / security_distance) / security_distance) ** 4
+            elif isEgoClose:
+                    reward -= ((distance / security_distance) / security_distance) ** 6
+            elif isEgoInCollision:
+                    reward -= 20
+        else:
+            reward = 0
 
-        return max(reward, -10)
+        return 0
             
             
     def _check_done(self, observation):
