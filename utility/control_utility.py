@@ -237,7 +237,9 @@ class DualControl(object):
                 elif event.key == K_u:
                     program_info.ego_vehicle.show_filter = not program_info.ego_vehicle.show_filter
                 elif event.key == K_i:
-                    program_info.ego_vehicle.show_detection = not program_info.ego_vehicle.show_detection        
+                    program_info.ego_vehicle.show_detection = not program_info.ego_vehicle.show_detection
+                elif event.key == K_r:
+                    self._reverse_cache = not self._reverse_cache
         
         self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time(), program_info)
         # self._parse_vehicle_wheel(program_info) #TODO "To drive start by pressing the brake pedal :')"

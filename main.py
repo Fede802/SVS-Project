@@ -99,7 +99,7 @@ lastUpdate = 0
 # ego_controller = pid_controller_random_following_brake_ttc.PIDController() #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled_following_brake_ttc.PIDController(update_frequency) #add buffer_size = None to disable buffer
 ego_controller = rl_controller.RLController()
-restart(3)
+restart()
 try:
     while program_info.running:
         cb != None and cb()
