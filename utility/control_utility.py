@@ -157,7 +157,7 @@ class DualControl(object):
                     program_info.send_info and server.send_data(f"ACC with target velocity {program_info.ego_vehicle.acc_info.target_velocity} toggled to {program_info.ego_vehicle.acc_info.is_active()}")
                 elif event.button == 10:
                     program_info.ego_vehicle.acc_info.change_distance_offset()
-                    program_info.send_info and server.send_data(f"Distance Changed to {program_info.ego_vehicle.acc_info.min_permitted_offset}")
+                    program_info.send_info and server.send_data(f"Distance mode set to {program_info.ego_vehicle.acc_info.min_permitted_offset // 7}")
                 elif event.button == 27: 
                     program_info.ego_vehicle.acc_info.toggle_acc()
                     program_info.ego_vehicle.acc_info.target_velocity = self._target_velocity
@@ -197,7 +197,7 @@ class DualControl(object):
                     program_info.send_info and server.send_data("Weather Changed")
                 elif event.key == K_h:
                     program_info.ego_vehicle.acc_info.change_distance_offset()
-                    program_info.send_info and server.send_data(f"Distance Changed to {program_info.ego_vehicle.acc_info.min_permitted_offset}")
+                    program_info.send_info and server.send_data(f"Distance mode set to {program_info.ego_vehicle.acc_info.min_permitted_offset // 7}")
                 if event.key == K_q:
                     control.gear = 1 if control.reverse else -1
                 elif event.key == K_m:
@@ -242,7 +242,7 @@ class DualControl(object):
                     self._reverse_cache = not self._reverse_cache
         
         self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time(), program_info)
-        # self._parse_vehicle_wheel(program_info) #TODO "To drive start by pressing the brake pedal :')"
+        #self._parse_vehicle_wheel(program_info) #TODO "To drive start by pressing the brake pedal :')"
         control.reverse = control.gear < 0
         program_info.ego_control.reverse = self._reverse_cache
         return False
