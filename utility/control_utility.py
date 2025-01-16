@@ -182,7 +182,11 @@ class DualControl(object):
                 elif event.key == pygame.K_3:
                     self._restart_callback(3)
                 elif event.key == pygame.K_4:
-                    self._restart_callback(4)    
+                    self._restart_callback(4)
+                elif event.key == pygame.K_5:
+                    self._restart_callback(5)
+                elif event.key == pygame.K_6:
+                    self._restart_callback(6)            
                 elif event.key == K_TAB:
                     camera_manager.toggle_camera()
                 elif event.key == K_c and pygame.key.get_mods() & KMOD_SHIFT:

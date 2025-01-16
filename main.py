@@ -15,7 +15,7 @@ traffic_thread = None
 stop_event = threading.Event()
 
 map_list = ['Town01', 'Town02', 'Town03', 'Town04', 'Town05', 'Town06', 'Town07', 'Town10HD', 'Town11', 'Town12', 'Town15']
-current_map = 0
+current_map = 7
 # mode 1 = town13 two car
 # mode 2 = town13 traffic
 # mode 3 = other_town_reset traffic
@@ -99,7 +99,7 @@ lastUpdate = 0
 # ego_controller = pid_controller_random_following_brake_ttc.PIDController() #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled_following_brake_ttc.PIDController(update_frequency) #add buffer_size = None to disable buffer
 ego_controller = rl_controller.RLController()
-restart()
+restart(3)
 try:
     while program_info.running:
         cb != None and cb()

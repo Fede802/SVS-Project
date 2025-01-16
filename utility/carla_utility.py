@@ -10,7 +10,7 @@ import server
 
 
 client = carla.Client('localhost', 2000)
-client.set_timeout(100.0)
+client.set_timeout(200.0)
 
 def set_synchronous_mode(synchronous_mode=True):
     settings = world.get_settings()
