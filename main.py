@@ -9,15 +9,6 @@ from vehicle_controller.rl_controller import rl_controller
 from control_utility import ProgramInfo, DualControl, ACCInfo
 from carla_utility import CameraManager, VehicleWithRadar, CollisionSensor, FadingText
 
-send_info = True
-save_info = True
-show_log = True
-show_in_carla = False
-cc = True
-update_frequency = 0.01 #seconds
-
-target_velocity = 90
-min_distance_offset = 7
 learning_rate = 0.003
 
 traffic_thread = None
@@ -27,9 +18,13 @@ map_list = ['Town01', 'Town02', 'Town03', 'Town04', 'Town05', 'Town06', 'Town07'
 current_map = 0
 # mode 1 = town13 two car
 # mode 2 = town13 traffic
-# mode 3 = town10 traffic
+# mode 3 = other_town_reset traffic
+# mode 4 = other_town switch
+# mode 5 = single car
+# mode 6 = demo
 def restart(mode = 1):
-    global ego_vehicle, other_vehicle, camera_manager, program_info, display, collision_sensor, fading_text, cb, traffic_thread, stop_event, current_map
+    global ego_vehicle, other_vehicle, camera_manager, program_info, display, collision_sensor, fading_text, cb, traffic_thread, stop_event, current_map, demo
+    demo = False
     send_info and server.send_data("Program Restart")
     if traffic_thread != None:
         stop_event.set()
@@ -53,19 +48,36 @@ def restart(mode = 1):
         ego_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=ego_spawn_point), ego_acc_info, ego_controller)
         if mode == 2:
             cb = carla_utility.spawn_traffic(8)
-        else:
+        elif mode == 1:
             other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(130)[0].transform
             other_vehicle_spawn_point.location.z += 2
             other_vehicle_acc_info = ACCInfo(True, min_permitted_offset=min_distance_offset, target_velocity=70)
             other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=other_vehicle_spawn_point), other_vehicle_acc_info)
+        elif mode == 6:
+            demo = True
+            other_vehicle_spawn_point = carla_utility.mid_lane_wp.next(130)[0].transform
+            other_vehicle_spawn_point.location.z += 2
+            other_vehicle_acc_info = ACCInfo(True, min_permitted_offset=min_distance_offset, target_velocity=70)
+            other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=other_vehicle_spawn_point), other_vehicle_acc_info)
+                
     camera_manager = CameraManager(display, ego_vehicle.vehicle)
     # little text in the center of the screen
     fading_text = FadingText(pygame.font.Font(pygame.font.get_default_font(), 24))
     program_info = ProgramInfo(ego_vehicle, other_vehicle, send_info=send_info)
     collision_sensor = CollisionSensor(ego_vehicle.vehicle, fading_text, program_info)
     carla_utility.move_spectator_to(ego_vehicle.vehicle.get_transform())
-    # time.sleep(2)
-# 
+
+send_info = True
+save_info = False
+show_log = False
+show_in_carla = False
+cc = True
+update_frequency = 0.01 #seconds
+
+target_velocity = 90
+min_distance_offsets = [7, 14, 21]
+min_distance_offset = min_distance_offsets[0]
+
 if send_info:
     server.start_servers()
 spawn_time = 0
@@ -93,13 +105,11 @@ try:
         cb != None and cb()
         program_info.reset()
         if(time.time() - lastUpdate > update_frequency): 
-            
             spawn_time += 1 
             if send_info:
                 server.send_data({"velocity": ego_vehicle.vehicle.get_velocity().length() * 3.6, "acceleration": ego_vehicle.vehicle.get_acceleration().length()})
             if save_info:
                 logger.write(str(ego_vehicle.vehicle.get_velocity().length() * 3.6)+ "," + str(ego_vehicle.vehicle.get_acceleration().length())+ "," +str(program_info.ego_control.throttle)+ "," +str(program_info.ego_control.brake))
-                # Log brake and distance to obstacle
             lastUpdate = time.time()
 
         clock.tick_busy_loop(120)
@@ -107,8 +117,7 @@ try:
             break
         if spawn_time >= 50:
             ego_vehicle.apply_control()
-            print(spawn_time)
-            if 800 < spawn_time < 1000:
+            if demo and 800 < spawn_time < 1000:
                 other_vehicle.vehicle_control = carla.VehicleControl(brake=1)
             other_vehicle != None and other_vehicle.apply_control()
         camera_manager.render(display, program_info)

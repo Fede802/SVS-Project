@@ -38,7 +38,6 @@ def start_servers():
 
 def send_data(data, topic=TOPIC):
     # Converte i dati in formato JSON e li pubblica
-    # print("Sending data: ", data)
     client.publish(topic, json.dumps(data))
 
 def close_servers():

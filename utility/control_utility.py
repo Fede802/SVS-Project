@@ -46,6 +46,9 @@ from pygame.locals import K_w
 from pygame.locals import K_v
 from pygame.locals import K_b
 from pygame.locals import K_n
+from pygame.locals import K_y
+from pygame.locals import K_u
+from pygame.locals import K_i
 
 class ACCInfo:
     def __init__(self, active = False, target_velocity = None, min_permitted_offset = None, reset = False):
@@ -143,7 +146,6 @@ class DualControl(object):
                     self._reverse_cache = not self._reverse_cache
                     #control.gear = 1 if control.reverse else -1
                 
-               
                 # elif event.button == 23:
                 #     world.camera_manager.next_sensor()
                 elif event.button == 9:
@@ -154,7 +156,6 @@ class DualControl(object):
                         control.brake = 0.0
                     program_info.send_info and server.send_data(f"ACC with target velocity {program_info.ego_vehicle.acc_info.target_velocity} toggled to {program_info.ego_vehicle.acc_info.is_active()}")
                 elif event.button == 10:
-                    # TODO: mettere toggle distanza
                     program_info.ego_vehicle.acc_info.change_distance_offset()
                     program_info.send_info and server.send_data(f"Distance Changed to {program_info.ego_vehicle.acc_info.min_permitted_offset}")
                 elif event.button == 27: 
@@ -198,7 +199,6 @@ class DualControl(object):
                 elif event.key == K_m:
                     control.manual_gear_shift = not control.manual_gear_shift
                     control.gear = control.gear
-                    # world.hud.notification('%s Transmission' %('Manual' if self._control.manual_gear_shift else 'Automatic'))
                 elif control.manual_gear_shift and event.key == K_COMMA:
                     control.gear = max(-1, control.gear - 1)
                 elif control.manual_gear_shift and event.key == K_PERIOD:
@@ -228,13 +228,16 @@ class DualControl(object):
                     program_info.other_vehicle.acc_info.increase_target_velocity()
                 elif event.key == K_n:
                     program_info.other_vehicle.acc_info.decrease_target_velocity()
-        
+                elif event.key == K_y:
+                    program_info.ego_vehicle.show_range = not program_info.ego_vehicle.show_range
+                elif event.key == K_u:
+                    program_info.ego_vehicle.show_filter = not program_info.ego_vehicle.show_filter
+                elif event.key == K_i:
+                    program_info.ego_vehicle.show_detection = not program_info.ego_vehicle.show_detection        
         
         self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time(), program_info)
-        # self._parse_vehicle_wheel(program_info) #TODO "To drive start by preshing the brake pedal :')"
+        # self._parse_vehicle_wheel(program_info) #TODO "To drive start by pressing the brake pedal :')"
         control.reverse = control.gear < 0
-        # world.player.apply_control(self._control)  TODO: Lasciamo commentato???????
-        # control_info.ego_control = control # TODO: Dovrebbe bastare questo 
         program_info.ego_control.reverse = self._reverse_cache
         return False
 
@@ -303,8 +306,6 @@ class DualControl(object):
             elif throttleCmd > 1:
                 throttleCmd = 1
 
-           
-
         #brakeCmd = 1.6 + (2.05 * math.log10(
         #    -0.7 * jsInputs[self._brake_idx] + 1.4) - 1.2) / 0.92
         brakeCmd = 1.6 + (2.05 * math.log10(
@@ -313,7 +314,6 @@ class DualControl(object):
             brakeCmd = 0
         elif brakeCmd > 1:
             brakeCmd = 1
-            
             
         program_info.ego_control.steer = steerCmd
         if jsInputs[self._brake_idx] != -1:

@@ -4,7 +4,7 @@ def draw_radar_bounding_range(radar: carla.Actor, life_time = 0.1, color = carla
     debug = radar.get_world().debug
     radar_h_fov = math.radians(int(radar.attributes.get('horizontal_fov')))
     radar_v_fov = math.radians(int(radar.attributes.get('vertical_fov')))
-    radar_range = int(radar.attributes.get('range'))
+    radar_range = float(radar.attributes.get('range'))
     radar_location = radar.get_location()
 
     shifted_max_range_point = math_utility.sub(get_point_at(radar, radar_location, radar_range), radar_location)

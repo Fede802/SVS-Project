@@ -58,7 +58,7 @@ def compute_security_distance(velocity):
     return (velocity / 10) ** 2
 
 radar_detection_h_radius = 1
-radar_detection_v_radius = 1
+radar_detection_v_radius = 0.8
 radar_range_offset = 20
 max_target_velocity = 130
 radar_range = compute_security_distance(max_target_velocity) + radar_range_offset
@@ -236,7 +236,7 @@ def spawn_camera(attach_to=None, transform=carla.Transform(carla.Location(x=1.2,
     camera_bp.set_attribute('image_size_y', str(height))
     return __spawn_actor(camera_bp, transform, attach_to=attach_to)
 
-def spawn_radar(attach_to, transform=carla.Transform(carla.Location(x=1.2, z=1.8), carla.Rotation(pitch=0)), horizontal_fov = 30, vertical_fov = 30, range=100, points_per_second=100000, sensor_tick = 0):
+def spawn_radar(attach_to, transform=carla.Transform(carla.Location(x=1.2, z=1.6), carla.Rotation(pitch=0)), horizontal_fov = 30, vertical_fov = 30, range=100, points_per_second=100000, sensor_tick = 0):
     radar_bp = world.get_blueprint_library().find('sensor.other.radar')
     radar_bp.set_attribute('horizontal_fov', str(horizontal_fov))
     radar_bp.set_attribute('vertical_fov', str(vertical_fov))
@@ -249,7 +249,6 @@ def destroy_all_vehicle_and_sensors():
     for v in world.get_actors().filter('vehicle.*'):
         v.destroy()
     for v in world.get_actors().filter('sensor.*'):
-        # v.stop()
         v.destroy()
     time.sleep(2)    
 
@@ -273,11 +272,11 @@ class VehicleWithRadar:
         distances = []
         velocities = []
         ttc = []
-        debug_utility.draw_radar_point_cloud_range(self.radar, self.radar_detection_h_radius, self.radar_detection_v_radius)
+        self.show_range and debug_utility.draw_radar_bounding_range(self.radar)
+        self.show_filter and debug_utility.draw_radar_point_cloud_range(self.radar, self.radar_detection_h_radius, self.radar_detection_v_radius)
         for detection in data:
             if debug_utility.evaluate_point(self.radar, detection, self.radar_detection_h_radius, self.radar_detection_v_radius):
-                # self.show_detection and debug_utility.draw_radar_point(self.radar_sensor, detection)
-                debug_utility.draw_radar_point(self.radar, detection)
+                self.show_detection and debug_utility.draw_radar_point(self.radar, detection)
                 distances.append(detection.depth)
                 velocities.append(detection.velocity)
                 ttc.append(detection.depth / detection.velocity if abs(detection.velocity) != 0 else float('inf'))
@@ -290,7 +289,6 @@ class VehicleWithRadar:
         return self.vehicle_control
     
     def apply_control(self):
-        #print('Applying control', self.vehicle_control)
         self.vehicle.apply_control(self.vehicle_control)
 
     def compute_and_apply_control(self):
@@ -343,14 +341,9 @@ class CameraManager(object):
             carla.Transform(carla.Location(x=-7.5, z=2.8), carla.Rotation(pitch=-10)),
             carla.Transform(carla.Location(x=1.6, z=1.7))]
         self.transform_index = transform_index
-        # self.hud = hud
         self.sensors = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
         self.sensors.append(self._parent.get_world().get_blueprint_library().find(self.sensors[0]))
-        
-        # if item[0].startswith('sensor.camera'):
-        #     bp.set_attribute('image_size_x', str(hud.dim[0]))
-        #     bp.set_attribute('image_size_y', str(hud.dim[1]))
-
+    
         self.__spawn_camera()    
 
     def __spawn_camera(self):
@@ -376,14 +369,13 @@ class CameraManager(object):
             display.blit(scaled_surface, (0, 0))
         if self.last_width != display.get_width() or self.last_height != display.get_height():
             self.__spawn_camera()
-        #self.sensor.set_image_size(display.get_width(), display.get_height())
            
         print_text_to_screen(display, f"Throttle: {program_info.ego_control.throttle}", (10, 10), (255, 255, 255))
         print_text_to_screen(display, f"Brake: {program_info.ego_control.brake}", (10, 50), (255, 255, 255))
         print_text_to_screen(display, f"Steer: {program_info.ego_control.steer}", (10, 90), (255, 255, 255))
         print_text_to_screen(display, f"Reverse: {program_info.ego_control.reverse}", (10, 130), (255, 255, 255))
         print_text_to_screen(display, f"CC: {program_info.ego_vehicle.acc_info.is_active()}", (10, 170), (255, 255, 255))
-        print_text_to_screen(display, f"Distance Mode: {((program_info.ego_vehicle.acc_info.min_permitted_offset % 7)+1)}({program_info.ego_vehicle.acc_info.min_permitted_offset})", (10, 210), (255, 255, 255))
+        print_text_to_screen(display, f"Distance Mode: {((program_info.ego_vehicle.acc_info.min_permitted_offset % 7)+1)}", (10, 210), (255, 255, 255))
         print_text_to_screen(display, f"Target Velocity: {program_info.ego_vehicle.acc_info.target_velocity}", (10, 250), (255, 255, 255))
         print_text_to_screen(display, f"Ego Velocity: {program_info.ego_velocity}", (10, 290), (255, 255, 255))
         other_vehicle_velocity = program_info.ego_velocity + program_info.obstacle_relative_velocity
