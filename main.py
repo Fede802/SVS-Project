@@ -61,7 +61,6 @@ def restart(mode = 1):
             other_vehicle = VehicleWithRadar(carla_utility.spawn_vehicle_bp_at(vehicle='vehicle.tesla.cybertruck', spawn_point=other_vehicle_spawn_point), other_vehicle_acc_info)
                 
     camera_manager = CameraManager(display, ego_vehicle.vehicle)
-    # little text in the center of the screen
     fading_text = FadingText(pygame.font.Font(pygame.font.get_default_font(), 24))
     program_info = ProgramInfo(ego_vehicle, other_vehicle, send_info=send_info)
     collision_sensor = CollisionSensor(ego_vehicle.vehicle, fading_text, program_info)

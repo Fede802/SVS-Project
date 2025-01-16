@@ -61,7 +61,6 @@ class GymEnv(gym.Env):
 
         for detection in radar_data:
             if debug_utility.evaluate_point(self.radar_sensor, detection, 1, 0.8):
-                #debug_utility.draw_radar_point(self.radar_sensor, detection)
                 distances.append(detection.depth)
                 velocities.append(detection.velocity)
         

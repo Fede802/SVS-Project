@@ -27,9 +27,6 @@ class GymEnv(gym.Env):
 
     def __spawn_vehicles(self):
         self.ego_vehicle = carla_utility.spawn_vehicle_bp_at('vehicle.tesla.cybertruck', self.SPAWN_POINT)
-        # probably useless
-        # ego_offset = rnd.randint(0, 100)
-        # self.ego_vehicle = carla_utility.spawn_vehicle_bp_at('vehicle.tesla.cybertruck', spawn_point=carla.Transform(debug_utility.get_point_from_trasform(self.SPAWN_POINT, ego_offset), self.SPAWN_POINT.rotation))
 
     def __reset(self, ego_velocity):
         carla_utility.destroy_all_vehicle_and_sensors() #to avoid spawning bugs

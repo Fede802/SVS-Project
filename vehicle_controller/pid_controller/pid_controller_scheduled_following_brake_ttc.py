@@ -12,9 +12,6 @@ class PID:
         self.dt = dt
         self.e_buffer = deque(maxlen=buffer_size) if buffer_size != None and buffer_size > 0 else deque()
 
-    def resetBuffer(self):
-        self.e_buffer.clear()
-
     def compute_control(self, target, current):
         e = target - current
         self.e_buffer.append(e)
@@ -58,26 +55,17 @@ class PIDController:
                 elif not self.braking and distance_error < 0:
                     self.braking = True        
 
-              
                 if not self.following:
-                # if distance_error > 10:
                     control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(vehicle.acc_info.target_velocity, vehicle.vehicle.get_velocity().length() * 3.6))
-                    # self.pid_distance.resetBuffer()
-                    print("1")
                 elif not self.braking and self.following:
                     ego_velocity = vehicle.vehicle.get_velocity().length() * 3.6
                     relative_velocity = vehicle.relative_velocity * 3.6
-                    print("2", relative_velocity)
                     control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(ego_velocity + relative_velocity, ego_velocity))   
                 elif self.braking and vehicle.min_depth > vehicle.acc_info.min_permitted_offset:
                     brake = self.pid_distance.compute_control(0, 1/vehicle.min_ttc)
                     control = carla.VehicleControl(brake = brake)
-                    print("3")
-                    # self.pid_velocity.resetBuffer()
                 else:
                     control = carla.VehicleControl(brake = 0.6)
-                    print("4")
-                    # self.pid_distance.resetBuffer()
                 self.last_throttle = control.throttle    
                 self.last_brake = control.brake    
                 self.last_update = time.time()

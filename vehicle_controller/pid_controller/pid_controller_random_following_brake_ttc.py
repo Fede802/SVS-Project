@@ -12,10 +12,6 @@ class PID:
         self.dt = -1
         self.e_buffer = deque(maxlen=buffer_size) if buffer_size != None and buffer_size > 0 else deque()
 
-    def resetBuffer(self):
-        self.e_buffer.clear()
-        self.dt = -1
-
     def compute_control(self, target, current):
         e = target - current
         self.e_buffer.append(e)
@@ -37,8 +33,6 @@ class PIDController:
         self.pid_distance = PID(buffer_size, kp_distance, ki_distance, kd_distance)
         self.following = False
 
-        
-
     def apply_control(self, vehicle: carla_utility.VehicleWithRadar):
         if vehicle.acc_info.is_active():
             if vehicle.acc_info.reset:
@@ -49,19 +43,23 @@ class PIDController:
             min_permitted_distance = carla_utility.compute_security_distance(vehicle.vehicle.get_velocity().length() * 3.6) + vehicle.acc_info.min_permitted_offset
             distance_error = vehicle.min_depth - min_permitted_distance
             
-            # if self.following and distance_error > 50:
-            #         self.following = False
-            # elif not self.following and distance_error < 5:
-            #         self.following = True    
+            if self.following and distance_error > 50:
+                self.following = False
+            elif not self.following and distance_error < 10:
+                self.following = True 
 
-            # if not self.following:
-            if distance_error > 10:
+            if self.braking and distance_error > 20:
+                self.braking = False
+            elif not self.braking and distance_error < 0:
+                self.braking = True        
+
+            if not self.following:
                 control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(vehicle.acc_info.target_velocity, vehicle.vehicle.get_velocity().length() * 3.6))
-            elif distance_error > 0:
+            elif not self.braking and self.following:
                 ego_velocity = vehicle.vehicle.get_velocity().length() * 3.6
                 relative_velocity = vehicle.relative_velocity * 3.6
                 control =  carla.VehicleControl(throttle = self.pid_velocity.compute_control(ego_velocity + relative_velocity, ego_velocity))  
-            elif vehicle.min_depth > vehicle.acc_info.min_permitted_offset:
+            elif self.braking and vehicle.min_depth > vehicle.acc_info.min_permitted_offset:
                 brake = self.pid_distance.compute_control(0, 1/vehicle.min_ttc)
                 control = carla.VehicleControl(brake = brake)
             else:
