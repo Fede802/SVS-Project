@@ -156,7 +156,7 @@ class GymEnv(gym.Env):
         else:
             reward = 0
 
-        return 0
+        return reward
             
             
     def _check_done(self, observation):

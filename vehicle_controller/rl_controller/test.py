@@ -1,8 +1,10 @@
 import sys, os
 
+from vehicle_controller.rl_controller.model.env_following_braking.sixth_attempt import env_following_breaking
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..','utility')))
 from stable_baselines3 import PPO
-from env import env_cc, env_braking, env_braking2, env_following_breaking
+from env import env_cc, env_braking, env_braking2
 
 env = env_following_breaking.GymEnv()
 env.setup(ego_velocity=90, leader_velocity=70, min_distance_offset=14)

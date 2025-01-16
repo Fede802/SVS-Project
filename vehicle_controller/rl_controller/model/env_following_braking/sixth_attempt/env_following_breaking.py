@@ -33,9 +33,9 @@ class GymEnv(gym.Env):
         return spaces.Box(low=-1.0, high=1.0, dtype=np.float32)
     
     def __observation_space(self):
-        # [nearest_obstacle_distance, security_distance, min_security_distance, relative_speed, ego_speed] in meters
-        return spaces.Box(low=np.array([0.0, 0.0, self.MIN_DISTANCE_SETTING[0], -self.MAX_VEHICLE_VELOCITY / 3.6, 0.0]), 
-                          high=np.array([self.RADAR_RANGE, carla_utility.compute_security_distance(self.MAX_VEHICLE_VELOCITY) + self.MIN_DISTANCE_SETTING[-1], self.MIN_DISTANCE_SETTING[-1], self.MAX_VEHICLE_VELOCITY / 3.6, self.MAX_VEHICLE_VELOCITY / 3.6]), dtype=np.float32)
+        # [nearest_obstacle_distance, security_distance, min_security_distance, relative_speed, ego_speed, absolute_speed] in meters #TODO: remove absolute speed
+        return spaces.Box(low=np.array([0.0, 0.0, self.MIN_DISTANCE_SETTING[0], -self.MAX_VEHICLE_VELOCITY / 3.6, 0., 0.0]), 
+                          high=np.array([self.RADAR_RANGE, carla_utility.compute_security_distance(self.MAX_VEHICLE_VELOCITY) + self.MIN_DISTANCE_SETTING[-1], self.MIN_DISTANCE_SETTING[-1], self.MAX_VEHICLE_VELOCITY / 3.6, self.MAX_VEHICLE_VELOCITY / 3.6, self.MAX_VEHICLE_VELOCITY / 3.6]), dtype=np.float32)
     
     def __spawn_vehicles(self, ego_velocity):
         other_vehicle_offset = carla_utility.compute_security_distance(ego_velocity) + self.MIN_DISTANCE_SETTING[self.index_security_distance] + rnd.randint(1, 10)
@@ -105,7 +105,7 @@ class GymEnv(gym.Env):
         done = self._check_done(obs)
         info = {}
         #print(f"{self.leader_vehicle.get_velocity().length() * 3.6} km/h")
-        print(f"Distance: {int(obs[0])} m, Security Distance: {int(obs[1])} m, Min_Security_Distance: {int(obs[2])} m, Relative_Speed: {int(obs[3] * 3.6)} km/h, Ego_Velocity: {int(obs[4] * 3.6)} km/h, reward: {reward}")
+        print(f"Distance: {int(obs[0])} m, Security Distance: {int(obs[1])} m, Min_Security_Distance: {int(obs[2])} m, Relative_Speed: {int(obs[3] * 3.6)} km/h, Ego_Velocity: {int(obs[4] * 3.6)} km/h, Absolute_Speed: {int(obs[5])} km/h, reward: {reward}")
         #print(f"Ego_Velocity: {obs[4] * 3.6} km/h, Absolute_Speed: {obs[5] * 3.6}, reward: {reward}")  
         return obs, reward, done, truncated, info
     
@@ -116,8 +116,9 @@ class GymEnv(gym.Env):
         distance = self.radar_data["distance"]
         relative_speed = self.radar_data["relative_speed"]
         ego_velocity = self.ego_vehicle.get_velocity().length() #In m/s
+        absolute_speed = ego_velocity + relative_speed #In m/s
         self.no_car_detected_counter += 1 if self.radar_data["distance"] == self.RADAR_RANGE else 0
-        return np.array([distance, security_distance, min_security_distance, relative_speed, ego_velocity], dtype=np.float32)
+        return np.array([distance, security_distance, min_security_distance, relative_speed, ego_velocity, abs(absolute_speed)], dtype=np.float32)
 
     def _compute_reward(self, observation):
 
@@ -125,11 +126,10 @@ class GymEnv(gym.Env):
         reward = 0
 
         #Observation
-        distance, security_distance, min_security_distance, relative_speed, ego_speed = observation
+        distance, security_distance, min_security_distance, _, ego_speed, absolute_speed = observation
         distance = int(distance)
         security_distance = int(security_distance)
         min_security_distance = int(min_security_distance)
-        absolute_speed = relative_speed + ego_speed
 
         #Check
         isObjectDetected = distance < self.RADAR_RANGE
@@ -160,7 +160,7 @@ class GymEnv(gym.Env):
             
             
     def _check_done(self, observation):
-        distance, security_distance, min_security_distance, _, ego_speed = observation
+        distance, security_distance, min_security_distance, _, ego_speed, _ = observation
         isNoCarDetected = self.no_car_detected_counter >= 20
         isEgoInCollision = distance < self.MIN_DISTANCE_SETTING[0]
         isEgoStoppedBefore = distance > security_distance and ego_speed < 1
