@@ -93,4 +93,4 @@ def custom_plot(*plot_files, names, log_dir = "logs"):
 drop = 50
 if __name__ == "__main__":
     random.seed(14)
-    custom_plot("log_7.txt","log_10.txt", names=["Switching Scheduled", "Switching RL"])    
+    custom_plot("log_17.txt", "log_10.txt", "log_14.txt", "log_20.txt", names=["other", "rl", "5.1", "5.2"])    

@@ -27,6 +27,6 @@ class RLController:
             action = action[0]
             throttle = action if action >= 0 else 0
             brake = -action if action < 0 else 0
-            vehicle.vehicle_control = carla.VehicleControl(throttle = throttle, brake = brake)
+            vehicle.vehicle_control = carla.VehicleControl(throttle = float(throttle), brake = float(brake))
         else:
             vehicle.vehicle_control = carla.VehicleControl()

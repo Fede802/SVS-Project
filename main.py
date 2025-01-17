@@ -67,8 +67,8 @@ def restart(mode = 1):
     carla_utility.move_spectator_to(ego_vehicle.vehicle.get_transform())
 
 send_info = True
-save_info = False
-show_log = False
+save_info = True
+show_log = True
 cc = True
 update_frequency = 0.01 #seconds
 
@@ -97,10 +97,10 @@ lastUpdate = 0
 # ego_controller = pid_controller_random_following_brake_ttc.PIDController() #add buffer_size = None to disable buffer
 # ego_controller = pid_controller_scheduled_following_brake_ttc.PIDController(update_frequency) #add buffer_size = None to disable buffer
 ego_controller = rl_controller.RLController()
-restart(6)
+restart(2)
 try:
     while program_info.running:
-        # cb != None and cb()
+        # cb != None and cb() #activate to make traffic loop
         program_info.reset()
         if(time.time() - lastUpdate > update_frequency): 
             spawn_time += 1 
