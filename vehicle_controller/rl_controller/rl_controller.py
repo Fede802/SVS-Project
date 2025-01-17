@@ -23,7 +23,8 @@ class RLController:
             if not self.braking > 0:
                 action, _ = self.rl_velocity.predict([vehicle.acc_info.target_velocity, vehicle.vehicle.get_velocity().length() * 3.6], deterministic=True)
             else:
-                action, _ = self.rl_distance.predict([min_permitted_distance, vehicle.min_depth], deterministic=True)
+                action, _ = self.rl_distance.predict([vehicle.min_depth, min_permitted_distance, vehicle.acc_info.min_permitted_offset, vehicle.relative_velocity, vehicle.vehicle.get_velocity().length(), vehicle.relative_velocity + vehicle.vehicle.get_velocity().length()], deterministic=True)
+                # action, _ = self.rl_distance.predict([min_permitted_distance, vehicle.min_depth], deterministic=True)
             action = action[0]
             throttle = action if action >= 0 else 0
             brake = -action if action < 0 else 0
