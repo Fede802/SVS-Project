@@ -91,7 +91,7 @@ vehicle_list = [
     # 'vehicle.nissan.micra', 
     'vehicle.audi.tt', 
     'vehicle.mercedes.coupe_2020', 
-    'vehicle.bmw.grandtourer', 
+    # 'vehicle.bmw.grandtourer', 
     # 'vehicle.harley-davidson.low_rider', 
     'vehicle.ford.ambulance', 
     # 'vehicle.micro.microlino', 
@@ -178,7 +178,7 @@ def handle_traffic(vehicles):
               
 
 def spawn_traffic(num_vehicle_per_lane: int):
-    spawn_distance = 50
+    spawn_distance = 100
     vehicles = []
     for i in range(num_vehicle_per_lane):
             vehicles.append(spawn(mid_lane_wp.get_right_lane(), spawn_distance * (i + 1)))
