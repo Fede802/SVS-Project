@@ -10,6 +10,7 @@ To find out the values of your steering wheel use jstest-gtk in Ubuntu.
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'utility'))
 sys.path.append(os.path.join(os.path.dirname(__file__), 'mqtt_service'))
+sys.path.append(os.path.join(os.path.dirname(__file__)))
 
 import carla, carla_utility, math
 import server
@@ -104,22 +105,27 @@ class DualControl(object):
         self._other_steer_cache = 0.0
         self._reverse_cache = False
         self._target_velocity = target_velocity
-       
+        self.joistick_connected = True
+    
         # initialize steering wheel
         pygame.joystick.init()
         joystick_count = pygame.joystick.get_count()
+        if joystick_count == 0:
+            self.joistick_connected = False
         if joystick_count > 1:
             raise ValueError("Please Connect Just One Joystick")
-        self._joystick = pygame.joystick.Joystick(0)
-        self._joystick.init()
+        
+        if self.joistick_connected:
+            self._joystick = pygame.joystick.Joystick(0)
+            self._joystick.init()
 
-        self._parser = ConfigParser()
-        self._parser.read('.\wheel_config.ini')
-        self._steer_idx = int(self._parser.get('G29 Racing Wheel', 'steering_wheel'))
-        self._throttle_idx = int(self._parser.get('G29 Racing Wheel', 'throttle'))
-        self._brake_idx = int(self._parser.get('G29 Racing Wheel', 'brake'))
-        self._reverse_idx = int(self._parser.get('G29 Racing Wheel', 'reverse'))
-        self._handbrake_idx = int(self._parser.get('G29 Racing Wheel', 'handbrake'))
+            self._parser = ConfigParser()
+            self._parser.read('.\wheel_config.ini')
+            self._steer_idx = int(self._parser.get('G29 Racing Wheel', 'steering_wheel'))
+            self._throttle_idx = int(self._parser.get('G29 Racing Wheel', 'throttle'))
+            self._brake_idx = int(self._parser.get('G29 Racing Wheel', 'brake'))
+            self._reverse_idx = int(self._parser.get('G29 Racing Wheel', 'reverse'))
+            self._handbrake_idx = int(self._parser.get('G29 Racing Wheel', 'handbrake'))
 
     def parse_events(self, camera_manager, program_info, clock):
         control = program_info.ego_control
@@ -242,7 +248,7 @@ class DualControl(object):
                     self._reverse_cache = not self._reverse_cache
         
         self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time(), program_info)
-        #self._parse_vehicle_wheel(program_info) #TODO "To drive start by pressing the brake pedal :')"
+        #self.joistick_connected and self._parse_vehicle_wheel(program_info) #TODO "To drive start by pressing the brake pedal :')"
         control.reverse = control.gear < 0
         program_info.ego_control.reverse = self._reverse_cache
         return False
