@@ -141,8 +141,6 @@ class DualControl(object):
                     self._restart_callback(3) 
                 elif event.button == 2: #B
                     self._restart_callback(4)             
-                # elif event.button == 1:
-                #     # world.hud.toggle_info()
                 elif event.button == 8:
                     camera_manager.toggle_camera()
                 elif event.button == 11:
@@ -150,10 +148,6 @@ class DualControl(object):
                     program_info.send_info and server.send_data("Weather Changed")
                 elif event.button == self._reverse_idx:
                     self._reverse_cache = not self._reverse_cache
-                    #control.gear = 1 if control.reverse else -1
-                
-                # elif event.button == 23:
-                #     world.camera_manager.next_sensor()
                 elif event.button == 9:
                     program_info.ego_vehicle.acc_info.toggle_acc()
                     program_info.ego_vehicle.acc_info.target_velocity = program_info.ego_velocity

@@ -110,7 +110,7 @@ vehicle_list = [
     'vehicle.dodge.charger_2020', 
     'vehicle.ford.crown', 
     'vehicle.seat.leon', 
-    'vehicle.toyota.prius', 
+    # 'vehicle.toyota.prius', 
     # 'vehicle.yamaha.yzf', 
     # 'vehicle.kawasaki.ninja', 
     # 'vehicle.bh.crossbike', 
@@ -132,7 +132,6 @@ vehicle_list = [
 def spawn(way_point: carla.Waypoint, spawn_distance):
     spawn_point = way_point.next(spawn_distance)[0].transform
     spawn_point.location.z += 2
-    # return spawn_vehicle_bp_at('vehicle.tesla.cybertruck', spawn_point)
     return spawn_vehicle_bp_at(rnd.choice(vehicle_list), spawn_point)
 
 def get_wp_from_lane_id(lane_id):

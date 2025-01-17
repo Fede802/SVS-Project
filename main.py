@@ -14,8 +14,8 @@ learning_rate = 0.003
 traffic_thread = None
 stop_event = threading.Event()
 
-map_list = ['Town01', 'Town02', 'Town03', 'Town04', 'Town05', 'Town06', 'Town07', 'Town10HD']
-current_map = 7
+map_list = ['Town01', 'Town02', 'Town04', 'Town05', 'Town06', 'Town07', 'Town10HD']
+current_map = 6
 # mode 1 = town13 two car
 # mode 2 = town13 traffic
 # mode 3 = other_town_reset traffic
@@ -69,7 +69,7 @@ def restart(mode = 1):
 send_info = True
 save_info = True
 show_log = True
-cc = True
+cc = False
 update_frequency = 0.01 #seconds
 
 target_velocity = 90
