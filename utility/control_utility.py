@@ -248,7 +248,7 @@ class DualControl(object):
                     self._reverse_cache = not self._reverse_cache
         
         self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time(), program_info)
-        #self.joistick_connected and self._parse_vehicle_wheel(program_info) #TODO "To drive start by pressing the brake pedal :')"
+        self.joistick_connected and self._parse_vehicle_wheel(program_info) #TODO "To drive start by pressing the brake pedal :')"
         control.reverse = control.gear < 0
         program_info.ego_control.reverse = self._reverse_cache
         return False

@@ -88,7 +88,7 @@ left_lane_wp = world.get_map().get_waypoint(carla.Location(x=2385, y=6110, z=187
 
 vehicle_list = [
     'vehicle.audi.a2', 
-    'vehicle.nissan.micra', 
+    # 'vehicle.nissan.micra', 
     'vehicle.audi.tt', 
     'vehicle.mercedes.coupe_2020', 
     'vehicle.bmw.grandtourer', 
@@ -97,11 +97,11 @@ vehicle_list = [
     # 'vehicle.micro.microlino', 
     'vehicle.carlamotors.firetruck', 
     'vehicle.carlamotors.carlacola', 
-    'vehicle.carlamotors.european_hgv', 
+    # 'vehicle.carlamotors.european_hgv', 
     'vehicle.ford.mustang', 
     'vehicle.chevrolet.impala', 
     'vehicle.lincoln.mkz_2020', 
-    'vehicle.citroen.c3', 
+    # 'vehicle.citroen.c3', 
     'vehicle.dodge.charger_police', 
     'vehicle.nissan.patrol', 
     'vehicle.jeep.wrangler_rubicon', 

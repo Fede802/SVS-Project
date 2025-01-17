@@ -67,8 +67,8 @@ def restart(mode = 1):
     carla_utility.move_spectator_to(ego_vehicle.vehicle.get_transform())
 
 send_info = True
-save_info = True
-show_log = True
+save_info = False
+show_log = False
 cc = True
 update_frequency = 0.01 #seconds
 
@@ -100,7 +100,7 @@ ego_controller = rl_controller.RLController()
 restart(6)
 try:
     while program_info.running:
-        cb != None and cb()
+        # cb != None and cb()
         program_info.reset()
         if(time.time() - lastUpdate > update_frequency): 
             spawn_time += 1 
