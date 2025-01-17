@@ -1,6 +1,8 @@
 import sys, os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..','utility')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..','mqtt_service')))
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.callbacks import CheckpointCallback

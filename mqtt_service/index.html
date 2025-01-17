@@ -6,16 +6,49 @@
     <title>MQTT Graphs</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: row;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .charts {
+            flex: 3;
+            padding: 20px;
+        }
+        .logs {
+            flex: 1;
+            padding: 20px;
+            border-left: 1px solid #ccc;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+        .log-entry {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+    </style>
 </head>
 <body>
-    <h1>Grafici in Tempo Reale con MQTT</h1>
+    <div class="charts">
+        <h1>Grafici in Tempo Reale con MQTT</h1>
 
-    <!-- Primo grafico -->
-    <canvas id="chart1" width="400" height="200"></canvas>
-    <br><br>
+        <!-- Secondo grafico -->
+        <canvas id="chart2" width="400" height="200"></canvas>
+        <br><br>
+        <!-- Primo grafico -->
+        <canvas id="chart1" width="400" height="200"></canvas>
 
-    <!-- Secondo grafico -->
-    <canvas id="chart2" width="400" height="200"></canvas>
+    </div>
+
+    <div class="logs">
+        <h2>Log Messaggi MQTT</h2>
+        <div id="logContainer"></div>
+    </div>
 
     <script>
         // Configura il primo grafico con Chart.js
@@ -23,7 +56,7 @@
         const accelerationChart = new Chart(ctx1, {
             type: 'line',
             data: {
-                labels: [], // Etichette (timestamp)
+                labels: [],
                 datasets: [{
                     label: 'Acceleration',
                     data: [],
@@ -49,13 +82,12 @@
                 }
             }
         });
-
         // Configura il secondo grafico con Chart.js
         const ctx2 = document.getElementById('chart2').getContext('2d');
         const velocityChart = new Chart(ctx2, {
             type: 'line',
             data: {
-                labels: [], // Etichette (timestamp)
+                labels: [],
                 datasets: [{
                     label: 'Velocity',
                     data: [],
@@ -82,11 +114,50 @@
             }
         });
 
+
+        let lastUpdateTime = Date.now();
+
+        function keepLastValues(chart, label, value) {
+            const maxLength = 100;
+
+            // Aggiungi nuovi dati
+            chart.data.labels.push(label);
+            chart.data.datasets[0].data.push(value);
+
+            // Limita i dati ai primi 30
+            if (chart.data.labels.length > maxLength) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+
+            // Forza l'aggiornamento immediato senza animazione
+            chart.update('none');
+            chart.render(); // Rende il grafico immediatamente visibile
+        }
+
+        // Funzione per aggiungere messaggi al log
+        function addLogMessage(message) {
+            const logContainer = document.getElementById('logContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+
+            logContainer.prepend(logEntry);
+        }
+
+        
+
         // Connessione al broker MQTT
-        const brokerUrl = 'ws://localhost:9001'
-        // const brokerUrl = 'wss://test.mosquitto.org:8081' //'ws://localhost:9001';  // Usa WebSocket per MQTT
-        const topic = 'grafico/dati/sdahfkjhdkjfhals';            // Topic da cui ricevere i dati
-        const client = mqtt.connect(brokerUrl);
+        const brokerUrl = 'ws://broker.hivemq.com:8000/mqtt';
+        const topic = 'svsProject/status';
+        const client = mqtt.connect(brokerUrl)
+        
+        // const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
+        //     protocolVersion: 5, // Ensure this matches the broker's MQTT version
+        //     clean: true,
+        //     reconnectPeriod: 1000,
+        //     clientId: 'mqttcarlajs_' + Math.random().toString(16).substr(2, 8),
+        // });
 
         client.on('connect', () => {
             console.log('Connesso al broker MQTT');
@@ -94,24 +165,40 @@
         });
 
         client.on('message', (topic, message) => {
-            const data = JSON.parse(message.toString());
-            const currentTime = new Date().toLocaleTimeString();
+            try {
+                // Tenta di parsare il messaggio come JSON
+                const data = JSON.parse(message.toString());
+                console.log('Messaggio ricevuto:', data);
 
-            // Aggiungi i dati al primo grafico
-            accelerationChart.data.labels.push(currentTime);
-            accelerationChart.data.datasets[0].data.push(data.acceleration);
+                // Verifica se il messaggio contiene "velocity" e "acceleration"
+                if (data.hasOwnProperty('velocity') && data.hasOwnProperty('acceleration')) {
+                    const acceleration = parseFloat(data.acceleration);
+                    const velocity = parseFloat(data.velocity);
+                    const time = data.time || new Date().toLocaleTimeString(); // Usa un timestamp se non specificato
 
-            // Aggiungi i dati trasformati al secondo grafico
-            velocityChart.data.labels.push(currentTime);
-            velocityChart.data.datasets[0].data.push(data.velocity);
-
-            // Aggiorna entrambi i grafici
-            accelerationChart.update();
-            velocityChart.update();
+                    // Aggiungi i dati ai grafici solo se sono validi
+                    if (!isNaN(acceleration) && !isNaN(velocity)) {
+                        keepLastValues(accelerationChart, time, acceleration);
+                        keepLastValues(velocityChart, time, velocity);
+                    } else {
+                        console.warn('Valori non numerici ricevuti:', data);
+                    }
+                } else {
+                    // Messaggi senza "velocity" o "acceleration" vengono loggati
+                    addLogMessage(message.toString());
+                }
+            } catch (error) {
+                // Logga l'errore di parsing
+                console.error('Errore nel parsing del messaggio:', error);
+                addLogMessage(`Errore nel parsing: ${message.toString()}`);
+            }
         });
+
+
 
         client.on('error', (error) => {
             console.error('Errore MQTT:', error);
+            addLogMessage(`Errore: ${error.message}`);
         });
     </script>
 </body>

@@ -10,7 +10,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'mqtt_service'))
 
 
 client = carla.Client('localhost', 2000)
-client.set_timeout(100.0)
+client.set_timeout(200.0)
 
 def set_synchronous_mode(synchronous_mode=True):
     settings = world.get_settings()
@@ -58,7 +58,7 @@ def compute_security_distance(velocity):
     return (velocity / 10) ** 2
 
 radar_detection_h_radius = 1
-radar_detection_v_radius = 1
+radar_detection_v_radius = 0.8
 radar_range_offset = 20
 max_target_velocity = 130
 radar_range = compute_security_distance(max_target_velocity) + radar_range_offset
@@ -88,7 +88,7 @@ left_lane_wp = world.get_map().get_waypoint(carla.Location(x=2385, y=6110, z=187
 
 vehicle_list = [
     'vehicle.audi.a2', 
-    'vehicle.nissan.micra', 
+    # 'vehicle.nissan.micra', 
     'vehicle.audi.tt', 
     'vehicle.mercedes.coupe_2020', 
     'vehicle.bmw.grandtourer', 
@@ -97,11 +97,11 @@ vehicle_list = [
     # 'vehicle.micro.microlino', 
     'vehicle.carlamotors.firetruck', 
     'vehicle.carlamotors.carlacola', 
-    'vehicle.carlamotors.european_hgv', 
+    # 'vehicle.carlamotors.european_hgv', 
     'vehicle.ford.mustang', 
     'vehicle.chevrolet.impala', 
     'vehicle.lincoln.mkz_2020', 
-    'vehicle.citroen.c3', 
+    # 'vehicle.citroen.c3', 
     'vehicle.dodge.charger_police', 
     'vehicle.nissan.patrol', 
     'vehicle.jeep.wrangler_rubicon', 
@@ -236,7 +236,7 @@ def spawn_camera(attach_to=None, transform=carla.Transform(carla.Location(x=1.2,
     camera_bp.set_attribute('image_size_y', str(height))
     return __spawn_actor(camera_bp, transform, attach_to=attach_to)
 
-def spawn_radar(attach_to, transform=carla.Transform(carla.Location(x=1.2, z=2.2), carla.Rotation(pitch=0)), horizontal_fov = 30, vertical_fov = 30, range=100, points_per_second=3000, sensor_tick = 0):
+def spawn_radar(attach_to, transform=carla.Transform(carla.Location(x=1.2, z=1.6), carla.Rotation(pitch=0)), horizontal_fov = 30, vertical_fov = 30, range=100, points_per_second=100000, sensor_tick = 0):
     radar_bp = world.get_blueprint_library().find('sensor.other.radar')
     radar_bp.set_attribute('horizontal_fov', str(horizontal_fov))
     radar_bp.set_attribute('vertical_fov', str(vertical_fov))
@@ -249,7 +249,6 @@ def destroy_all_vehicle_and_sensors():
     for v in world.get_actors().filter('vehicle.*'):
         v.destroy()
     for v in world.get_actors().filter('sensor.*'):
-        # v.stop()
         v.destroy()
     time.sleep(2)    
 
@@ -274,10 +273,11 @@ class VehicleWithRadar:
         distances = []
         velocities = []
         ttc = []
-
+        self.show_range and debug_utility.draw_radar_bounding_range(self.radar)
+        self.show_filter and debug_utility.draw_radar_point_cloud_range(self.radar, self.radar_detection_h_radius, self.radar_detection_v_radius)
         for detection in data:
             if debug_utility.evaluate_point(self.radar, detection, self.radar_detection_h_radius, self.radar_detection_v_radius):
-                self.show_detection and debug_utility.draw_radar_point(self.radar_sensor, detection)
+                self.show_detection and debug_utility.draw_radar_point(self.radar, detection)
                 distances.append(detection.depth)
                 velocities.append(detection.velocity)
                 ttc.append(detection.depth / detection.velocity if abs(detection.velocity) != 0 else float('inf'))
@@ -305,9 +305,11 @@ class VehicleWithRadar:
     def get_transform(self):
         return self.vehicle.get_transform()
     
-def print_text_to_screen(display, text, position, color):
+def print_text_to_screen(display, text, position, color, right=False):
         font = pygame.font.Font(None, 36)  # You can choose the font and size
         text_surface = font.render(text, True, color)  # White color
+        if right:
+            position = (display.get_width() - text_surface.get_width() - position[0], position[1])
         display.blit(text_surface, position)
 
 class FadingText(object):
@@ -329,31 +331,31 @@ class FadingText(object):
         display.blit(self.text_texture, ((display.get_width()-self.text_texture.get_width())/2, display.get_height()-40))
 
 class CameraManager(object):
-    def __init__(self, parent_actor, transform_index = 0):
+    def __init__(self, display, parent_actor, transform_index = 0):
         self.sensor = None
         self.surface = None
+        self.display = display
+        self.last_width = display.get_width()
+        self.last_height = display.get_height()
         self._parent = parent_actor
         self._camera_transforms = [
-            carla.Transform(carla.Location(x=-5.5, z=2.8), carla.Rotation(pitch=-15)),
+            carla.Transform(carla.Location(x=-7.5, z=2.8), carla.Rotation(pitch=-10)),
             carla.Transform(carla.Location(x=1.6, z=1.7))]
         self.transform_index = transform_index
-        # self.hud = hud
         self.sensors = ['sensor.camera.rgb', cc.Raw, 'Camera RGB']
         self.sensors.append(self._parent.get_world().get_blueprint_library().find(self.sensors[0]))
-        self.sensors[-1].set_attribute('image_size_x', "1280")
-        self.sensors[-1].set_attribute('image_size_y', "720")
-        # if item[0].startswith('sensor.camera'):
-        #     bp.set_attribute('image_size_x', str(hud.dim[0]))
-        #     bp.set_attribute('image_size_y', str(hud.dim[1]))
-
+    
         self.__spawn_camera()    
 
     def __spawn_camera(self):
+        self.sensors[-1].set_attribute('image_size_x', str(self.display.get_width()))
+        self.sensors[-1].set_attribute('image_size_y', str(self.display.get_height()))
+        self.last_width = self.display.get_width()
+        self.last_height = self.display.get_height()
         self.sensor = self._parent.get_world().spawn_actor(
             self.sensors[-1],
             self._camera_transforms[self.transform_index],
-            attach_to=self._parent)
-    
+            attach_to=self._parent)    
         self.sensor.listen(self._parse_image)
 
     #change camera view
@@ -366,16 +368,27 @@ class CameraManager(object):
         if self.surface is not None:
             scaled_surface = pygame.transform.scale(self.surface, display.get_size())
             display.blit(scaled_surface, (0, 0))
+        if self.last_width != display.get_width() or self.last_height != display.get_height():
+            self.__spawn_camera()
+           
         print_text_to_screen(display, f"Throttle: {program_info.ego_control.throttle}", (10, 10), (255, 255, 255))
         print_text_to_screen(display, f"Brake: {program_info.ego_control.brake}", (10, 50), (255, 255, 255))
         print_text_to_screen(display, f"Steer: {program_info.ego_control.steer}", (10, 90), (255, 255, 255))
-        print_text_to_screen(display, f"Hand Brake: {program_info.ego_control.hand_brake}", (10, 130), (255, 255, 255))
-        print_text_to_screen(display, f"PID CC: {program_info.acc_info.is_active()}", (10, 170), (255, 255, 255))
-        print_text_to_screen(display, f"Min Permitted Distance: {program_info.acc_info.min_permitted_offset}", (10, 210), (255, 255, 255))
-        print_text_to_screen(display, f"Ego Velocity: {program_info.ego_velocity}", (10, 250), (255, 255, 255))
-        print_text_to_screen(display, f"Target Velocity: {program_info.acc_info.target_velocity}", (10, 290), (255, 255, 255))
+        print_text_to_screen(display, f"Reverse: {program_info.ego_control.reverse}", (10, 130), (255, 255, 255))
+        print_text_to_screen(display, f"CC: {program_info.ego_vehicle.acc_info.is_active()}", (10, 170), (255, 255, 255))
+        distance_mode = (program_info.ego_vehicle.acc_info.min_permitted_offset // 7)
+        print_text_to_screen(display, f"Distance Mode: {distance_mode}", (10, 210), (255, 255, 255))
+        print_text_to_screen(display, f"Target Velocity: {program_info.ego_vehicle.acc_info.target_velocity}", (10, 250), (255, 255, 255))
+        print_text_to_screen(display, f"Ego Velocity: {program_info.ego_velocity}", (10, 290), (255, 255, 255))
         other_vehicle_velocity = program_info.ego_velocity + program_info.obstacle_relative_velocity
         print_text_to_screen(display, f"Obstacle Velocity: {other_vehicle_velocity}", (10, 330), (255, 255, 255))
+        print_text_to_screen(display, f"Min TTC: {program_info.ego_vehicle.min_ttc}", (10, 370), (255, 255, 255))
+        print_text_to_screen(display, f"Min Depth: {program_info.ego_vehicle.min_depth}", (10, 410), (255, 255, 255))
+        if program_info.other_vehicle != None:
+            print_text_to_screen(display, f"CC: {program_info.other_vehicle.acc_info.is_active()}", (10, display.get_height() - 130), (255, 255, 255))
+            print_text_to_screen(display, f"Target Velocity: {program_info.other_vehicle.acc_info.target_velocity}", (10, display.get_height() - 90), (255, 255, 255))
+            print_text_to_screen(display, f"Other Vehicle Velocity: {program_info.other_vehicle.vehicle.get_velocity().length() * 3.6}", (10, display.get_height() - 50), (255, 255, 255))
+
 
     def _parse_image(self, image):
         image.convert(self.sensors[1])

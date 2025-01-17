@@ -1,6 +1,6 @@
 __pycache__/
 .vscode/
 _out/
-log/
 logs/
+log/
 lost_model/

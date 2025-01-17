@@ -4,16 +4,24 @@ def draw_radar_bounding_range(radar: carla.Actor, life_time = 0.1, color = carla
     debug = radar.get_world().debug
     radar_h_fov = math.radians(int(radar.attributes.get('horizontal_fov')))
     radar_v_fov = math.radians(int(radar.attributes.get('vertical_fov')))
-    radar_range = int(radar.attributes.get('range'))
+    radar_range = float(radar.attributes.get('range'))
     radar_location = radar.get_location()
 
     shifted_max_range_point = math_utility.sub(get_point_at(radar, radar_location, radar_range), radar_location)
 
-    center = math_utility.add(shifted_max_range_point, radar_location)
-    p1 = math_utility.add(math_utility.rotate(shifted_max_range_point, radar_h_fov, radar_v_fov), radar_location)
-    p2 = math_utility.add(math_utility.rotate(shifted_max_range_point, radar_h_fov, -radar_v_fov), radar_location)
-    p3 = math_utility.add(math_utility.rotate(shifted_max_range_point, -radar_h_fov, radar_v_fov), radar_location)
-    p4 = math_utility.add(math_utility.rotate(shifted_max_range_point, -radar_h_fov, -radar_v_fov), radar_location)
+    baseVersor1, baseVersor2 = math_utility.get_plane_base_versor_from_normal_versor(radar.get_transform().get_forward_vector())
+    
+    sh1 = shifted_max_range_point.length() * math.cos(radar_h_fov)
+    sh2 = shifted_max_range_point.length() * math.sin(radar_v_fov)
+
+    sh1 = math_utility.vector_scalar_op(lambda a, b: sh1 * a, baseVersor1)
+    sh2 = math_utility.vector_scalar_op(lambda a, b: sh2 * a, baseVersor2)
+
+    center = math_utility.add(radar_location, shifted_max_range_point)
+    p1 = math_utility.add(math_utility.add(center, sh1),  sh2)
+    p2 = math_utility.sub(math_utility.add(center, sh1),  sh2)
+    p3 = math_utility.sub(math_utility.sub(center, sh1),  sh2)
+    p4 = math_utility.add(math_utility.sub(center, sh1),  sh2)
 
     debug.draw_line(radar_location, center, life_time=life_time, color=color)
     debug.draw_line(radar_location, p1, life_time=life_time, color=color)
@@ -33,7 +41,8 @@ def draw_radar_point(radar: carla.Actor, point: carla.RadarDetection, life_time 
 
 def draw_radar_point_cloud_range(radar: carla.Actor, h_radius, v_radius, life_time = 0.1, color = carla.Color(255, 0, 0)):
     debug = radar.get_world().debug
-    radar_range = int(radar.attributes.get('range'))
+    radar_range = float(radar.attributes.get('range'))
+    
     baseVersor1, baseVersor2 = math_utility.get_plane_base_versor_from_normal_versor(radar.get_transform().get_forward_vector())
     
     baseVersor1Shift = math_utility.vector_scalar_op(lambda a, b: h_radius * a, baseVersor1)
@@ -53,7 +62,7 @@ def draw_radar_point_cloud_range(radar: carla.Actor, h_radius, v_radius, life_ti
     debug.draw_line(p2, p6, life_time=life_time, color=color)
     debug.draw_line(p3, p7, life_time=life_time, color=color)
     debug.draw_line(p4, p8, life_time=life_time, color=color)
-   
+
 def evaluate_point(radar: carla.Actor, detection: carla.RadarDetection, h_radius, v_radius):
     radar_range = int(float(radar.attributes.get('range')))
 
